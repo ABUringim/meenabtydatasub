@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldCheck, Lock, Mail, Key, ArrowRight, AlertCircle, ArrowLeft } from 'lucide-react';
+import { adminSignInWithGoogle } from '../../lib/googleAuth';
+import { GoogleSignInButton } from '../auth/GoogleSignInButton';
+import { ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, ArrowLeft } from 'lucide-react';
 
 interface AdminLoginProps {
   onSuccess: () => void;
@@ -15,7 +17,31 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onReturnToHom
   const [requires2fa, setRequires2fa] = useState(false);
   const [totpCode, setTotpCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleGoogleAdminLogin = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+
+    try {
+      const res = await adminSignInWithGoogle();
+      if (res && res.requires2FA) {
+        setEmail(res.email);
+        setRequires2fa(true);
+      }
+    } catch (err: any) {
+      if (err?.code === 'not_admin') {
+        setError('This account does not have admin access.');
+      } else if (err?.code === 'auth/user-disabled') {
+        setError('This administrative account has been disabled. Please contact support@sayyadadatasub.com.');
+      } else if (err?.message) {
+        setError(err.message);
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +110,25 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onReturnToHom
           </div>
         )}
 
+        {!requires2fa && (
+          <div className="space-y-4">
+            <GoogleSignInButton
+              onClick={handleGoogleAdminLogin}
+              isLoading={isGoogleLoading}
+              disabled={isLoading || isGoogleLoading}
+              text="Continue with Google"
+            />
+
+            <div className="relative flex items-center justify-center">
+              <div className="border-t border-slate-800 w-full" />
+              <span className="bg-slate-950 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                or admin credentials
+              </span>
+              <div className="border-t border-slate-800 w-full" />
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {!requires2fa ? (
             <>
@@ -103,6 +148,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onReturnToHom
                   />
                 </div>
               </div>
+
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">

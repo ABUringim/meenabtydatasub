@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { signInVerified, signUpWithVerification } from '../../lib/auth';
+import { signInWithGoogle, handleGoogleRedirectResult } from '../../lib/googleAuth';
+import { GoogleSignInButton } from '../auth/GoogleSignInButton';
+import { GoogleLinkModal } from '../auth/GoogleLinkModal';
 import { Mail, Lock, User, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface AuthPagesProps {
@@ -22,7 +25,43 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isResolvingRedirect, setIsResolvingRedirect] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkEmail, setLinkEmail] = useState<string | undefined>(undefined);
+
+  // Handle Google Mobile Redirect Result once on mount before onAuthStateChanged guard fires
+  useEffect(() => {
+    let mounted = true;
+    handleGoogleRedirectResult()
+      .then((user) => {
+        if (!mounted) return;
+        if (user) {
+          onSuccess();
+        }
+      })
+      .catch((err: any) => {
+        if (!mounted) return;
+        if (err?.isAccountExistsDifferentCredential) {
+          setLinkEmail(err?.email);
+          setLinkModalOpen(true);
+        } else if (err?.code === 'auth/email-not-verified') {
+          onRequireVerification(err?.email || '', '');
+        } else if (err?.message) {
+          setError(err.message);
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setIsResolvingRedirect(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [onSuccess, onRequireVerification]);
 
   // Clear errors when the user edits fields
   const handleEmailChange = (val: string) => {
@@ -33,6 +72,31 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
   const handlePasswordChange = (val: string) => {
     setPassword(val);
     if (error) setError(null);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setIsGoogleLoading(true);
+
+    try {
+      const user = await signInWithGoogle();
+      if (user) {
+        onSuccess();
+      }
+    } catch (err: any) {
+      if (err?.isAccountExistsDifferentCredential) {
+        setLinkEmail(err?.email);
+        setLinkModalOpen(true);
+      } else if (err?.code === 'auth/email-not-verified') {
+        onRequireVerification(err?.email || email, '');
+      } else if (err?.isPopupBlocked) {
+        setError('Please allow popups for this site, then try again — or use email and password below.');
+      } else if (err?.message) {
+        setError(err.message);
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   const handleSignInSubmit = async (e: React.FormEvent) => {
@@ -81,8 +145,30 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
     }
   };
 
+  // Prevent UI flicker while redirect result resolves
+  if (isResolvingRedirect) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-24 text-center">
+        <div className="inline-block animate-spin w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full mb-3" />
+        <p className="text-xs font-semibold text-slate-600">Verifying your secure session...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-md mx-auto px-4 py-12">
+      {/* Account Linking Modal for existing email/password user who attempts Google */}
+      <GoogleLinkModal
+        isOpen={linkModalOpen}
+        email={linkEmail}
+        onClose={() => setLinkModalOpen(false)}
+        onSignInWithPassword={(prefilledEmail) => {
+          setMode('login');
+          if (prefilledEmail) setEmail(prefilledEmail);
+          setError(null);
+        }}
+      />
+
       <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xl space-y-6">
         <div className="text-center space-y-1">
           <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white font-extrabold text-xl flex items-center justify-center mx-auto mb-2">
@@ -113,6 +199,27 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
             <span>{error}</span>
           </div>
         )}
+
+        {/* Google Sign-In Button on Login & Register surfaces */}
+        {mode !== 'forgot' && (
+          <div className="space-y-4">
+            <GoogleSignInButton
+              onClick={handleGoogleSignIn}
+              isLoading={isGoogleLoading}
+              disabled={isLoading || isGoogleLoading}
+              text={mode === 'register' ? 'Sign up with Google' : 'Continue with Google'}
+            />
+
+            <div className="relative flex items-center justify-center">
+              <div className="border-t border-slate-200 w-full" />
+              <span className="bg-white px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                or
+              </span>
+              <div className="border-t border-slate-200 w-full" />
+            </div>
+          </div>
+        )}
+
 
         {mode === 'login' ? (
           <form onSubmit={handleSignInSubmit} className="space-y-4">

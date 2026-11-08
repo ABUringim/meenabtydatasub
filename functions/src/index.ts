@@ -881,3 +881,58 @@ export const bulkImportProducts = functions.https.onCall(async (data, context) =
   return { status: 'success', count: products.length };
 });
 
+/**
+ * 13. ensureUserProfile: Idempotent profile creation for Google / federated sign-in users
+ */
+export const ensureUserProfile = functions.https.onCall(async (_data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+  }
+
+  const uid = context.auth.uid;
+  const userRef = db.collection('users').doc(uid);
+  const snap = await userRef.get();
+
+  if (snap.exists) {
+    // Existing user — update lastLoginAt only
+    await userRef.update({
+      lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { created: false, role: snap.data()?.role || 'customer' };
+  }
+
+  // First-time federated user — create profile
+  const token = context.auth.token;
+  const email = token.email || '';
+  const displayName = token.name || (email ? email.split('@')[0] : 'Sayyada Customer');
+  const authProvider = token.firebase?.sign_in_provider || 'google.com';
+
+  await userRef.set({
+    uid,
+    email,
+    emailVerified: token.email_verified === true,
+    displayName,
+    name: displayName,
+    photoURL: token.picture || null,
+    phone: null,
+    role: 'customer', // NEVER admin — admins must be designated manually by owner
+    kycTier: 1,
+    tier: 1,
+    kyc_status: 'unverified',
+    wallet_balance: 0,
+    ledger_balance: 0,
+    hasPin: false,
+    twoFactorEnabled: false,
+    suspended: false,
+    authProvider,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    created_at: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { created: true, role: 'customer' };
+});
+

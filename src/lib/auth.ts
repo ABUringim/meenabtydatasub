@@ -268,3 +268,13 @@ export const useAuth = () => {
 
   return { user, loading, error };
 };
+
+// Re-export Google Auth methods for seamless imports per prompt specs
+export {
+  signInWithGoogle,
+  handleGoogleRedirectResult,
+  linkGoogleAccount,
+  unlinkGoogleAccount,
+  setPasswordForGoogleUser,
+  adminSignInWithGoogle,
+} from './googleAuth';
