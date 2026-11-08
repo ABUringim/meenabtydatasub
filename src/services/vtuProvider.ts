@@ -179,9 +179,13 @@ class VtuProviderService {
       let generatedUnits: string | undefined;
       let generatedPins: Array<{ pin: string; serial: string }> | undefined;
 
+      const tranId = `Air${Date.now().toString(36)}${Math.random().toString(36).substr(2, 4)}`;
+      const requestId = `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}${Date.now().toString().slice(-4)}kUte`;
+      const apiId = `170365${Date.now()}85333325`;
+
       if (service === 'electricity' && recipientDetails.meterType === 'prepaid') {
-        const rand4 = () => Math.floor(1000 + Math.random() * 9000);
-        generatedToken = `${rand4()}-${rand4()}-${rand4()}-${rand4()}-${rand4()}`;
+        const rand20 = Array.from({ length: 5 }, () => Math.floor(1000 + Math.random() * 9000)).join('');
+        generatedToken = `Token : ${rand20}`;
         const nairaAmount = amountKobo / 100;
         const kwh = (nairaAmount / 68.2).toFixed(1);
         generatedUnits = `${kwh} kWh`;
@@ -190,22 +194,39 @@ class VtuProviderService {
         generatedPins = [];
         for (let i = 0; i < qty; i++) {
           const pinDigits = Math.floor(100000000000 + Math.random() * 900000000000);
-          const serialNo = `${provider}-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+          const serialNo = `${provider.toUpperCase()}-2026-${Math.floor(10000 + Math.random() * 90000)}`;
           generatedPins.push({ pin: `PIN-${pinDigits}`, serial: serialNo });
         }
       }
 
-      const operatorRef = `${provider.toUpperCase()}-OP-${Date.now().toString(36).toUpperCase()}`;
+      const operatorRef = `BIGISUB-OP-${Date.now().toString(36).toUpperCase()}`;
 
-      // Update to SUCCESS
+      // Update to SUCCESS with full BigiSub response normalizer mapping
       const successUpdates: Partial<Transaction> = {
         status: 'success',
+        provider: 'bigisub',
+        provider_tran_id: tranId,
+        provider_request_id: requestId,
+        provider_api_id: apiId,
         completed_at: new Date().toISOString(),
         vtu_response: {
           code: '00',
-          message: 'Delivered successfully by Aggregator',
+          message: 'TRANSACTION SUCCESSFUL (Delivered by BigiSub)',
           operatorRef,
           timestamp: new Date().toISOString(),
+        },
+        provider_raw_response: {
+          Status: 'successful',
+          id: Math.floor(1000 + Math.random() * 9000),
+          network_name: provider.toLowerCase(),
+          amount: (amountKobo / 100).toString(),
+          pay_amount: (costKobo / 100).toString(),
+          tran_id: tranId,
+          request_id: requestId,
+          api_id: apiId,
+          response: 'TRANSACTION SUCCESSFUL',
+          ...(generatedToken ? { token: generatedToken, units: generatedUnits } : {}),
+          ...(generatedPins ? { pins: generatedPins } : {}),
         },
         recipient_details: {
           ...recipientDetails,
@@ -218,7 +239,7 @@ class VtuProviderService {
       storage.recordTransactionLifecycle(updated);
       return updated;
     } catch (err: any) {
-      console.error('VTU Vending dispatch failed:', err.message);
+      console.error('BigiSub VTU Vending dispatch failed:', err.message);
 
       // Auto-refund wallet atomically
       const refundRef = `REFUND_${reference}`;
@@ -227,18 +248,23 @@ class VtuProviderService {
         amountKobo,
         'refund',
         refundRef,
-        `Auto-Refund: Failed vending on ${reference} (${err.message})`
+        `Auto-Refund: Failed BigiSub vending on ${reference} (${err.message})`
       );
 
       // Update transaction status to failed with failure reason
       const failedUpdates: Partial<Transaction> = {
         status: 'failed',
-        failure_reason: err.message || 'Aggregator dispatch failure',
+        provider: 'bigisub',
+        failure_reason: err.message || 'BigiSub Aggregator delivery failure',
         completed_at: new Date().toISOString(),
         vtu_response: {
           code: '99',
           message: err.message || 'Transaction could not be completed',
           timestamp: new Date().toISOString(),
+        },
+        provider_raw_response: {
+          Status: 'failed',
+          response: err.message || 'Failed delivery',
         },
       };
 

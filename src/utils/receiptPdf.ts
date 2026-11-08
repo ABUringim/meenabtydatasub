@@ -109,6 +109,9 @@ export function generateReceiptPdf(txn: Transaction): void {
       txn.recipient_details.pins.map((p) => `${p.serial}: ${p.pin}`).join(' | '),
     ]);
   }
+  if (txn.provider_tran_id) {
+    details.push(['Gateway Transaction ID', txn.provider_tran_id]);
+  }
 
   details.forEach(([label, value]) => {
     doc.setFillColor(248, 250, 252);

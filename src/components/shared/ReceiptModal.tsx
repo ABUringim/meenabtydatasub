@@ -184,6 +184,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             </div>
           )}
 
+          {transaction.provider_tran_id && (
+            <div className="py-2 flex justify-between">
+              <span className="text-slate-500">Gateway Tran ID</span>
+              <span className="font-mono text-emerald-800 font-semibold text-[11px]">{transaction.provider_tran_id}</span>
+            </div>
+          )}
+
           {transaction.vtu_response?.operatorRef && (
             <div className="py-2 flex justify-between">
               <span className="text-slate-500">Operator Ref</span>

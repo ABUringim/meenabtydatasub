@@ -8,6 +8,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import axios from 'axios';
+import { vtuProvider } from './vtu/vtuProvider';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -159,7 +160,7 @@ export const paystackWebhook = functions.https.onRequest(async (req, res) => {
 });
 
 /**
- * 3. Purchase Service (Atomic Wallet Deduction + VTU Dispatch + Auto-Refund)
+ * 3. Purchase Service (Atomic Wallet Deduction + BigiSub Dispatch + Auto-Refund)
  */
 export const purchaseService = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -172,6 +173,15 @@ export const purchaseService = functions.https.onCall(async (data, context) => {
   const txnRef = db.collection('transactions').doc(reference);
   const userRef = db.collection('users').doc(userId);
   const ledgerDebitRef = db.collection('wallet_ledger').doc();
+
+  // Validate supported services (BigiSub supports: airtime, data, tv, electricity, exam)
+  const isSupportedByBigisub = ['airtime', 'data', 'tv', 'electricity', 'exam'].includes(service);
+  if (!isSupportedByBigisub) {
+    throw new functions.https.HttpsError(
+      'unimplemented',
+      `${service.toUpperCase()} is currently in scheduled release. Please choose from Airtime, Data, TV, Electricity, or Exam Pins.`
+    );
+  }
 
   // 1. Atomic Wallet Deduction & Idempotency check inside Firestore Transaction
   let previousBalance = 0;
@@ -197,11 +207,12 @@ export const purchaseService = functions.https.onCall(async (data, context) => {
 
       balanceAfterDebit = previousBalance - amountKobo;
 
-      // Lock transaction document in 'processing' state
+      // Lock transaction document in 'processing' state with active provider BigiSub
       transaction.set(txnRef, {
         user_id: userId,
         service,
         provider,
+        provider_name: 'bigisub',
         reference,
         amount: amountKobo,
         cost: costKobo,
@@ -219,7 +230,7 @@ export const purchaseService = functions.https.onCall(async (data, context) => {
         updated_at: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Write ledger debit record
+      // Write immutable ledger debit record
       transaction.set(ledgerDebitRef, {
         user_id: userId,
         type: 'debit',
@@ -228,7 +239,7 @@ export const purchaseService = functions.https.onCall(async (data, context) => {
         balance_after: balanceAfterDebit,
         source: 'vending',
         reference,
-        description: `Payment for ${service.toUpperCase()} (${provider})`,
+        description: `Payment for ${service.toUpperCase()} (${provider}) via BigiSub`,
         created_at: admin.firestore.FieldValue.serverTimestamp(),
       });
     });
@@ -243,37 +254,101 @@ export const purchaseService = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', err.message);
   }
 
-  // 2. Call Upstream VTU Aggregator API
+  // 2. Dispatch Call to BigiSub VTU Aggregator API
+  const amountNaira = amountKobo / 100;
+  const startTime = Date.now();
+
   try {
-    let vtuResponseData: any;
-    // In production, dispatch HTTP request to upstream aggregator (VTPass, ClubKash, Interswitch)
-    // Simulated successful dispatch with token generation:
-    const isMock = true;
-    if (isMock) {
-      vtuResponseData = {
-        code: '00',
-        content: {
-          transactions: {
-            status: 'delivered',
-            operator_ref: `OP_${Date.now()}`,
-          },
-        },
-      };
+    let vtuResult: any;
+
+    if (service === 'airtime') {
+      vtuResult = await vtuProvider.buyAirtime({
+        network: provider,
+        amountNaira,
+        phone: recipientDetails.phone,
+        airtimeType: recipientDetails.airtimeType || 'vtu',
+        idempotencyKey: reference,
+      });
+    } else if (service === 'data') {
+      vtuResult = await vtuProvider.buyData({
+        network: provider,
+        planCode: recipientDetails.planCode,
+        phone: recipientDetails.phone,
+        idempotencyKey: reference,
+      });
+    } else if (service === 'tv') {
+      vtuResult = await vtuProvider.buyCable({
+        provider,
+        smartcard: recipientDetails.smartcardNo,
+        planCode: recipientDetails.planCode,
+        phone: recipientDetails.phone,
+        idempotencyKey: reference,
+      });
+    } else if (service === 'electricity') {
+      vtuResult = await vtuProvider.buyElectricity({
+        disco: provider,
+        meterNumber: recipientDetails.meterNo,
+        meterType: recipientDetails.meterType || 'prepaid',
+        amountNaira,
+        phone: recipientDetails.phone,
+        customerName: recipientDetails.customerName,
+        customerAddress: recipientDetails.address,
+        idempotencyKey: reference,
+      });
+    } else if (service === 'exam') {
+      vtuResult = await vtuProvider.buyExamPin({
+        examType: provider,
+        quantity: recipientDetails.quantity || 1,
+        idempotencyKey: reference,
+      });
     }
+
+    const latencyMs = Date.now() - startTime;
+
+    // Merge generated tokens / PINs into recipient details
+    const updatedRecipient = {
+      ...recipientDetails,
+      ...(vtuResult?.token ? { token: vtuResult.token, units: vtuResult.units } : {}),
+      ...(vtuResult?.pins ? { pins: vtuResult.pins } : {}),
+    };
 
     // Mark Transaction SUCCESS
     await txnRef.update({
       status: 'success',
+      provider: 'bigisub',
+      provider_tran_id: vtuResult.tranId,
+      provider_request_id: vtuResult.requestId,
+      provider_api_id: vtuResult.apiId || null,
+      provider_raw_response: vtuResult.rawResponse || {},
       completed_at: admin.firestore.FieldValue.serverTimestamp(),
-      vtu_response: vtuResponseData,
+      recipient_details: updatedRecipient,
+      vtu_response: {
+        code: '00',
+        message: 'Delivered successfully by BigiSub',
+        operatorRef: vtuResult.operatorRef,
+        tranId: vtuResult.tranId,
+        timestamp: new Date().toISOString(),
+      },
     });
+
+    // Update Provider Health Stats in admin_stats/provider
+    const providerStatsRef = db.collection('admin_stats').doc('provider');
+    await providerStatsRef.set(
+      {
+        provider: 'bigisub',
+        successCount: admin.firestore.FieldValue.increment(1),
+        lastSuccessAt: admin.firestore.FieldValue.serverTimestamp(),
+        avgLatencyMs: latencyMs,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     // Write Customer Subcollections (Activity, Receipts, Spending)
     const recipient =
       recipientDetails.phone ||
       recipientDetails.meterNo ||
       recipientDetails.smartcardNo ||
-      recipientDetails.accountNumber ||
       reference;
 
     const activityRef = db.collection('users').doc(userId).collection('activity').doc();
@@ -296,6 +371,9 @@ export const purchaseService = functions.https.onCall(async (data, context) => {
       recipient,
       amount: amountKobo,
       status: 'success',
+      token: vtuResult?.token || null,
+      pins: vtuResult?.pins || null,
+      providerTranId: vtuResult.tranId,
       issuedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
@@ -311,9 +389,17 @@ export const purchaseService = functions.https.onCall(async (data, context) => {
       { merge: true }
     );
 
-    return { status: 'success', reference };
+    return {
+      status: 'success',
+      reference,
+      providerTranId: vtuResult.tranId,
+      token: vtuResult?.token,
+      pins: vtuResult?.pins,
+    };
   } catch (apiError: any) {
-    console.error('Aggregator dispatch failed:', apiError);
+    console.error('BigiSub Vending dispatch failed:', apiError);
+
+    const failureReason = apiError.customerMessage || apiError.message || 'Aggregator delivery timeout';
 
     // Auto-Refund Wallet Atomically
     const ledgerRefundRef = db.collection('wallet_ledger').doc();
@@ -329,7 +415,9 @@ export const purchaseService = functions.https.onCall(async (data, context) => {
 
       transaction.update(txnRef, {
         status: 'failed',
-        failure_reason: apiError.message || 'Aggregator delivery timeout',
+        provider: 'bigisub',
+        failure_reason: failureReason,
+        provider_raw_response: apiError.rawResponse || { error: failureReason },
         completed_at: admin.firestore.FieldValue.serverTimestamp(),
       });
 
@@ -341,14 +429,28 @@ export const purchaseService = functions.https.onCall(async (data, context) => {
         balance_after: refundedBal,
         source: 'refund',
         reference: `REFUND_${reference}`,
-        description: `Auto-Refund: Failed vending on ${reference}`,
+        description: `Auto-Refund: Failed BigiSub vending on ${reference}`,
         created_at: admin.firestore.FieldValue.serverTimestamp(),
       });
     });
 
-    throw new functions.https.HttpsError('unavailable', 'Telecommunications provider timeout. Your wallet has been automatically refunded.');
+    // Record Failure in Provider Health Stats
+    const providerStatsRef = db.collection('admin_stats').doc('provider');
+    await providerStatsRef.set(
+      {
+        provider: 'bigisub',
+        failedCount: admin.firestore.FieldValue.increment(1),
+        lastFailureAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastFailureReason: failureReason,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    throw new functions.https.HttpsError('unavailable', failureReason);
   }
 });
+
 
 /**
  * 4. Admin Manual Wallet Adjustment
@@ -935,4 +1037,143 @@ export const ensureUserProfile = functions.https.onCall(async (_data, context) =
 
   return { created: true, role: 'customer' };
 });
+
+/**
+ * 14. BigiSub Health & Connection Diagnostic Callable (Admin / Owner)
+ */
+export const testProviderConnection = functions.https.onCall(async (_data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Admin auth required.');
+
+  const adminDoc = await db.collection('admins').doc(context.auth.uid).get();
+  const userDoc = await db.collection('users').doc(context.auth.uid).get();
+  const role = userDoc.data()?.role;
+  if (!adminDoc.exists && role !== 'admin' && role !== 'owner') {
+    throw new functions.https.HttpsError('permission-denied', 'Staff access required.');
+  }
+
+  const result = await vtuProvider.healthCheck();
+
+  // Log in admin_settings/vtu
+  await db.collection('admin_settings').doc('vtu').set(
+    {
+      activeProvider: 'bigisub',
+      lastHealthCheckAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastHealthCheckStatus: result.status,
+      latencyMs: result.latencyMs,
+    },
+    { merge: true }
+  );
+
+  return result;
+});
+
+/**
+ * 15. Pre-payment Meter Validation
+ */
+export const verifyMeterDetails = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required.');
+  const { disco, meterNumber, meterType } = data;
+  return await vtuProvider.verifyMeter({ disco, meterNumber, meterType: meterType || 'prepaid' });
+});
+
+/**
+ * 16. Pre-payment Smartcard / Cable Validation
+ */
+export const verifyCableDetails = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required.');
+  const { provider, smartcard } = data;
+  return await vtuProvider.verifyCable({ provider, smartcard });
+});
+
+/**
+ * 17. Requery Stuck Transaction
+ */
+export const requeryTransaction = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required.');
+  const { transactionRef } = data;
+
+  const txnDoc = await db.collection('transactions').doc(transactionRef).get();
+  if (!txnDoc.exists) throw new functions.https.HttpsError('not-found', 'Transaction not found.');
+
+  const txn = txnDoc.data();
+  const vtuResult = await vtuProvider.requery({
+    tranId: txn?.provider_tran_id || txn?.reference,
+    requestId: txn?.provider_request_id || txn?.reference,
+    service: txn?.service,
+  });
+
+  if (vtuResult.success && txn?.status !== 'success') {
+    await db.collection('transactions').doc(transactionRef).update({
+      status: 'success',
+      completed_at: admin.firestore.FieldValue.serverTimestamp(),
+      provider_raw_response: vtuResult.rawResponse,
+    });
+  }
+
+  return vtuResult;
+});
+
+/**
+ * 18. Bulk Requery Stuck Transactions (Older than 5 minutes)
+ */
+export const bulkRequeryStuck = functions.https.onCall(async (_data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Admin auth required.');
+
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60000);
+  const snap = await db
+    .collection('transactions')
+    .where('status', '==', 'processing')
+    .where('created_at', '<=', fiveMinutesAgo)
+    .limit(20)
+    .get();
+
+  let resolved = 0;
+  for (const doc of snap.docs) {
+    const d = doc.data();
+    try {
+      const res = await vtuProvider.requery({
+        tranId: d.provider_tran_id || d.reference,
+        requestId: d.provider_request_id || d.reference,
+        service: d.service,
+      });
+      if (res.success) {
+        await doc.ref.update({
+          status: 'success',
+          completed_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        resolved++;
+      }
+    } catch {
+      // ignore individual failures during bulk sweep
+    }
+  }
+
+  return { scanned: snap.docs.length, resolved };
+});
+
+/**
+ * 19. Sync BigiSub Plans (Option B)
+ */
+export const syncBigisubPlans = functions.https.onCall(async (_data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Admin auth required.');
+
+  // Standard BigiSub wholesale catalog seed with BigiSub plan codes
+  const defaultPlans = [
+    { id: 'bigi-mtn-sme-1gb', service: 'data', provider: 'MTN', provider_plan_code: '1', plan_code: 'MTN-1GB-SME', name: 'MTN SME 1GB', cost_price: 22000, selling_price: 25000, active: true },
+    { id: 'bigi-mtn-sme-2gb', service: 'data', provider: 'MTN', provider_plan_code: '2', plan_code: 'MTN-2GB-SME', name: 'MTN SME 2GB', cost_price: 44000, selling_price: 50000, active: true },
+    { id: 'bigi-mtn-sme-5gb', service: 'data', provider: 'MTN', provider_plan_code: '5', plan_code: 'MTN-5GB-SME', name: 'MTN SME 5GB', cost_price: 110000, selling_price: 125000, active: true },
+    { id: 'bigi-glo-1gb', service: 'data', provider: 'Glo', provider_plan_code: '10', plan_code: 'GLO-1GB-CG', name: 'Glo Corporate 1GB', cost_price: 23000, selling_price: 27000, active: true },
+    { id: 'bigi-airtel-1gb', service: 'data', provider: 'Airtel', provider_plan_code: '20', plan_code: 'AIRTEL-1GB-CG', name: 'Airtel Corporate 1GB', cost_price: 24000, selling_price: 28000, active: true },
+  ];
+
+  const batch = db.batch();
+  for (const p of defaultPlans) {
+    const ref = db.collection('products').doc(p.id);
+    batch.set(ref, { ...p, provider: 'bigisub', updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  }
+
+  await batch.commit();
+  return { status: 'success', synced: defaultPlans.length };
+});
+
 

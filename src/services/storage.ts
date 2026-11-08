@@ -1099,7 +1099,12 @@ class StorageService {
 
   // --- Providers & Paystack Config ---
   getProviders(): VtuProviderConfig[] {
-    return this.getItem<VtuProviderConfig[]>(STORAGE_KEYS.PROVIDERS, []);
+    const list = this.getItem<VtuProviderConfig[]>(STORAGE_KEYS.PROVIDERS, INITIAL_PROVIDERS);
+    if (!list || list.length === 0 || !list.some((p) => p.code === 'bigisub')) {
+      this.setItem(STORAGE_KEYS.PROVIDERS, INITIAL_PROVIDERS);
+      return INITIAL_PROVIDERS;
+    }
+    return list;
   }
 
   updateProvider(id: string, updates: Partial<VtuProviderConfig>): void {

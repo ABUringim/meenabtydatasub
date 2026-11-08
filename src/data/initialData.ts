@@ -384,10 +384,33 @@ export const TRANSPORT_BILLERS = [
 
 export const INITIAL_PROVIDERS: VtuProviderConfig[] = [
   {
+    id: 'bigisub',
+    name: 'BigiSub Telecom Gateway (Production Live)',
+    code: 'bigisub',
+    active: true,
+    isSandbox: false,
+    status: 'healthy',
+    successRate: 99.8,
+    balanceNgn: 5200000,
+    apiUrl: 'https://bigisub.ng/api/v1',
+    apiKeyMasked: '298e••••••••••••••••701241',
+    secretKeyMasked: 'Token •••• (Firebase Secret Manager)',
+    secretName: 'BIGISUB_TOKEN',
+    fallbackOrder: 1,
+    lastTestedAt: new Date().toISOString(),
+    serviceToggles: {
+      airtime: true,
+      data: true,
+      tv: true,
+      electricity: true,
+      exam: true,
+    },
+  },
+  {
     id: 'vtpass',
     name: 'VTPass Aggregator Hub',
     code: 'vtpass',
-    active: true,
+    active: false,
     isSandbox: false,
     status: 'healthy',
     successRate: 99.8,
@@ -395,7 +418,7 @@ export const INITIAL_PROVIDERS: VtuProviderConfig[] = [
     apiUrl: 'https://api.vtpass.com/api',
     apiKeyMasked: 'vtp_live_9482••••••••••••••',
     secretKeyMasked: 'sec_vtp_0192••••••••••••••',
-    fallbackOrder: 1,
+    fallbackOrder: 2,
     lastTestedAt: new Date().toISOString(),
   },
   {

@@ -101,6 +101,12 @@ export interface Transaction {
     rawPayload?: any;
     timestamp: string;
   };
+  provider_tran_id?: string;
+  provider_request_id?: string;
+  provider_api_id?: string;
+  provider_raw_response?: any;
+  provider_requery_attempts?: number;
+  provider_last_requery_at?: string;
   api_response?: any;
   failure_reason?: string;
   retries: number;
@@ -191,6 +197,7 @@ export interface ProductItem {
   id: string;
   service: ServiceCategory;
   provider: string;
+  provider_plan_code?: string;
   plan_code: string;
   name: string;
   cost_price: number; // in kobo
@@ -240,7 +247,7 @@ export interface AuditLog {
 export interface VtuProviderConfig {
   id: string;
   name: string;
-  code: 'vtpass' | 'clubkash' | 'interswitch' | 'custom';
+  code: 'bigisub' | 'vtpass' | 'clubkash' | 'interswitch' | 'custom';
   active: boolean;
   isSandbox: boolean;
   status: 'healthy' | 'degraded' | 'maintenance';
@@ -251,7 +258,27 @@ export interface VtuProviderConfig {
   secretKeyMasked: string;
   fallbackOrder: number;
   lastTestedAt?: string;
+  secretName?: string;
+  serviceToggles?: {
+    airtime: boolean;
+    data: boolean;
+    tv: boolean;
+    electricity: boolean;
+    exam: boolean;
+  };
 }
+
+export interface AdminProviderStats {
+  provider: string;
+  successCount: number;
+  failedCount: number;
+  pendingCount: number;
+  successRate: number;
+  avgLatencyMs: number;
+  lastFailureAt?: string;
+  lastFailureReason?: string;
+}
+
 
 export interface PaystackGatewayConfig {
   publicKeyMasked: string;
