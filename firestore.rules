@@ -1,0 +1,163 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isResourceOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isStaffAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["admin", "owner"]
+      );
+    }
+
+    function isPlatformOwner() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "owner";
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow get: if isResourceOwner(userId) || isStaffAdmin();
+      allow list: if isStaffAdmin();
+      allow create: if isResourceOwner(userId) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.role == "customer" &&
+        request.resource.data.wallet_balance == 0;
+      allow update: if (isResourceOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['wallet_balance', 'role', 'suspended'])) ||
+        (isPlatformOwner() ? true : (isStaffAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])));
+      allow delete: if false;
+
+      // Subcollection: Beneficiaries
+      match /beneficiaries/{beneficiaryId} {
+        allow read, write: if isResourceOwner(userId);
+      }
+
+      // Subcollection: Activity Timeline
+      match /activity/{activityId} {
+        allow read: if isResourceOwner(userId) || isStaffAdmin();
+        allow write: if isResourceOwner(userId);
+      }
+
+      // Subcollection: Receipts
+      match /receipts/{receiptId} {
+        allow read: if isResourceOwner(userId) || isStaffAdmin();
+        allow write: if isResourceOwner(userId);
+      }
+
+      // Subcollection: Spending Analytics
+      match /spending/{serviceId} {
+        allow read: if isResourceOwner(userId) || isStaffAdmin();
+        allow write: if isResourceOwner(userId);
+      }
+    }
+
+    // --- Products (Public Read, Admin Write) ---
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isStaffAdmin();
+    }
+
+    // --- Transactions (Owner Read Only, Server-Side Write Only) ---
+    match /transactions/{txnId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isStaffAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isStaffAdmin());
+      allow write: if false; // Cloud Functions exclusively via Admin SDK
+    }
+
+    // --- Wallets (Owner Read Only, Server-Side Write Only) ---
+    match /wallets/{userId} {
+      allow get: if isResourceOwner(userId) || isStaffAdmin();
+      allow list: if isStaffAdmin();
+      allow write: if false; // Cloud Functions exclusively
+    }
+
+    // --- Wallet Ledger (Owner Read Only, Server-Side Write Only) ---
+    match /wallet_ledger/{entryId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isStaffAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isStaffAdmin());
+      allow write: if false; // Cloud Functions exclusively
+    }
+
+    // --- Payments (Owner Read Only, Server-Side Write Only) ---
+    match /payments/{paymentId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isStaffAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isStaffAdmin());
+      allow write: if false;
+    }
+
+    // --- Disputes ---
+    match /disputes/{disputeId} {
+      allow get: if isSignedIn() && (resource.data.user_id == request.auth.uid || isStaffAdmin());
+      allow list: if isSignedIn() && (resource.data.user_id == request.auth.uid || isStaffAdmin());
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update: if isStaffAdmin();
+      allow delete: if false;
+    }
+
+    // --- Audit Logs ---
+    match /audit_logs/{logId} {
+      allow read: if isStaffAdmin();
+      allow write: if false; // Immutable server writes only
+    }
+
+    // --- Platform Settings & Aggregators (Owner Only Write) ---
+    match /platform_settings/{settingId} {
+      allow read: if true;
+      allow write: if isPlatformOwner();
+    }
+
+    match /vtu_providers/{providerId} {
+      allow read: if isStaffAdmin();
+      allow write: if isPlatformOwner();
+    }
+
+    // --- Admins Node ---
+    match /admins/{adminId} {
+      allow read: if isStaffAdmin();
+      allow write: if isPlatformOwner();
+    }
+
+    // --- Blog CMS Posts ---
+    match /posts/{postId} {
+      allow read: if resource.data.status == "published" || resource.data.published == true || isStaffAdmin();
+      allow create, update, delete: if isStaffAdmin();
+    }
+
+    // --- Admin Aggregated Stats (Admin Read Only, Server-Side Write Only) ---
+    match /admin_stats/{docId} {
+      allow read: if isStaffAdmin();
+      allow write: if false;
+    }
+    match /admin_stats/services/{service} {
+      allow read: if isStaffAdmin();
+      allow write: if false;
+    }
+    match /admin_stats/daily/{date} {
+      allow read: if isStaffAdmin();
+      allow write: if false;
+    }
+    match /admin_stats/pending/{docId} {
+      allow read: if isStaffAdmin();
+      allow write: if false;
+    }
+
+    // --- Admin Activity Audit Trail (Owner Read Only, Server-Side Write Only) ---
+    match /admin_activity/{activityId} {
+      allow read: if isPlatformOwner();
+      allow write: if false;
+    }
+  }
+}

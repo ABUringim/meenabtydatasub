@@ -1,0 +1,182 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and KYC account status",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 256 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "name": { "type": "string", "maxLength": 128 },
+        "tier": { "type": "number", "enum": [1, 2] },
+        "kyc_status": { "type": "string", "enum": ["verified", "pending", "unverified"] },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "wallet_balance": { "type": "number", "description": "Wallet balance in kobo" },
+        "suspended": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "phone", "name", "tier", "role", "wallet_balance", "created_at"]
+    },
+    "Beneficiary": {
+      "title": "Beneficiary",
+      "description": "Saved customer contact details for fast vending",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "user_id": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["phone", "meter", "smartcard", "bank"] },
+        "label": { "type": "string", "maxLength": 128 },
+        "value": { "type": "string", "maxLength": 64 },
+        "provider": { "type": "string", "maxLength": 64 },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "user_id", "type", "label", "value", "provider", "created_at"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "VTU service plan or tariff catalog item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "service": { "type": "string" },
+        "provider": { "type": "string", "maxLength": 64 },
+        "plan_code": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 128 },
+        "cost_price": { "type": "number" },
+        "selling_price": { "type": "number" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["id", "service", "provider", "plan_code", "name", "cost_price", "selling_price", "active"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Idempotent service vending transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "user_id": { "type": "string", "maxLength": 128 },
+        "service": { "type": "string" },
+        "provider": { "type": "string", "maxLength": 64 },
+        "reference": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "number" },
+        "cost": { "type": "number" },
+        "profit": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "processing", "success", "failed", "reversed"] },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "user_id", "service", "provider", "reference", "amount", "status", "created_at"]
+    },
+    "Wallet": {
+      "title": "Wallet",
+      "description": "Atomic wallet document for each user",
+      "type": "object",
+      "properties": {
+        "balance": { "type": "number" },
+        "ledger_balance": { "type": "number" },
+        "last_updated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["balance", "ledger_balance", "last_updated"]
+    },
+    "WalletLedger": {
+      "title": "WalletLedger",
+      "description": "Immutable double-entry ledger event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "user_id": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["credit", "debit"] },
+        "amount": { "type": "number" },
+        "balance_before": { "type": "number" },
+        "balance_after": { "type": "number" },
+        "source": { "type": "string", "enum": ["paystack", "vending", "refund", "admin_adjustment"] },
+        "reference": { "type": "string", "maxLength": 128 },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "user_id", "type", "amount", "balance_before", "balance_after", "source", "reference", "created_at"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Paystack funding transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "user_id": { "type": "string", "maxLength": 128 },
+        "paystack_reference": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "number" },
+        "status": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "user_id", "paystack_reference", "amount", "status", "verified", "created_at"]
+    },
+    "Dispute": {
+      "title": "Dispute",
+      "description": "Customer transaction dispute ticket",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "transaction_id": { "type": "string", "maxLength": 128 },
+        "transaction_ref": { "type": "string", "maxLength": 128 },
+        "user_id": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["open", "investigating", "resolved_refunded", "rejected"] },
+        "description": { "type": "string", "maxLength": 2048 },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "transaction_id", "transaction_ref", "user_id", "status", "description", "created_at"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Security audit ledger entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "actor_id": { "type": "string", "maxLength": 128 },
+        "action": { "type": "string", "maxLength": 128 },
+        "target": { "type": "string", "maxLength": 256 },
+        "ip": { "type": "string", "maxLength": 64 },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "actor_id", "action", "target", "created_at"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and KYC credentials"
+    },
+    "/users/{userId}/beneficiaries/{beneficiaryId}": {
+      "schema": "Beneficiary",
+      "description": "User saved contact and meter beneficiaries"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Global catalog of telecom bundles and biller products"
+    },
+    "/transactions/{txnId}": {
+      "schema": "Transaction",
+      "description": "Service vending transactions"
+    },
+    "/wallets/{userId}": {
+      "schema": "Wallet",
+      "description": "User atomic wallet balance"
+    },
+    "/wallet_ledger/{entryId}": {
+      "schema": "WalletLedger",
+      "description": "Immutable financial ledger of all credits and debits"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Verified Paystack funding transactions"
+    },
+    "/disputes/{disputeId}": {
+      "schema": "Dispute",
+      "description": "Customer dispute investigation tickets"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Immutable security audit log"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Sayyada Datasub",
+  "description": "Multi-Service VTU, Bill Payment & Fintech Platform with wallet funding, instant airtime, cheap data, electricity, TV subscriptions, and exam PINs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
