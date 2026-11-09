@@ -5,6 +5,7 @@ import { BlogPost, PostStatus } from '../../types';
 import { formatWATDate } from '../../lib/formatters';
 import { PostEditorModal } from './modals/PostEditorModal';
 import { Modal } from '../shared/Modal';
+import { storage } from '../../services/storage';
 import {
   FileText,
   Plus,
@@ -81,7 +82,6 @@ export const AdminCms: React.FC = () => {
 
   const handleSaveBanner = (e: React.FormEvent) => {
     e.preventDefault();
-    const { storage } = require('../../services/storage');
     storage.recordAdminActivity(
       user?.uid || 'admin',
       user?.name || 'Administrator',
