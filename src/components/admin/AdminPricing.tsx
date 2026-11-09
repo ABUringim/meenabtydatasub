@@ -63,7 +63,7 @@ export const AdminPricing: React.FC = () => {
 
     storage.recordAuditLog(
       user?.uid || 'admin',
-      user?.email || 'admin@sayyadadatasub.com',
+      user?.email || 'admin@meenabtydatasub.com',
       'PRICING_ENGINE_UPDATE',
       'Global Service Markups & Funding Bonus',
       { markups, fundingBonus, withdrawalFee }

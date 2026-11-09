@@ -6,11 +6,8 @@ import {
   Wallet,
   Menu,
   X,
-  ShieldAlert,
-  User,
   ArrowRight,
   PlusCircle,
-  Search,
   LogOut,
 } from 'lucide-react';
 
@@ -25,7 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   onOpenFundWallet,
 }) => {
-  const { user, isAdmin, switchRole, logout } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const { balanceKobo } = useWallet();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -47,11 +44,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-2.5 text-left group"
           >
             <div className="w-9 h-9 rounded-lg bg-emerald-700 flex items-center justify-center text-white font-extrabold text-lg shadow-sm group-hover:bg-emerald-800 transition-colors">
-              S
+              M
             </div>
             <div>
               <span className="text-lg font-black tracking-tight text-slate-900 block leading-tight">
-                SAYYADA<span className="text-emerald-700">DATASUB</span>
+                MEENABTY<span className="text-emerald-700">DATASUB</span>
               </span>
               <span className="text-[10px] text-slate-500 font-medium tracking-wide block">
                 VTU & BILL PAYMENTS
@@ -77,33 +74,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Primary Actions & User Info */}
         <div className="flex items-center gap-3">
-          {/* Quick Role Switcher for Evaluator/Admin testing */}
-          <div className="hidden sm:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-semibold">
-            <button
-              onClick={() => {
-                switchRole('customer');
-                onNavigate('customer-dashboard');
-              }}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
-                !isAdmin ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Customer
-            </button>
-            <button
-              onClick={() => {
-                switchRole('admin');
-                onNavigate('admin-dashboard');
-              }}
-              className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 ${
-                isAdmin ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <ShieldAlert className="w-3 h-3 text-amber-400" />
-              <span>Admin</span>
-            </button>
-          </div>
-
           {user ? (
             <div className="flex items-center gap-2">
               {/* Wallet pill */}
@@ -168,37 +138,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-5 space-y-3 animate-in slide-in-from-top-2">
-          {/* Role switcher on mobile */}
-          <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs">
-            <span className="text-slate-500 font-medium">Test Role Mode:</span>
-            <div className="flex gap-1">
-              <button
-                onClick={() => {
-                  switchRole('customer');
-                  setMobileMenuOpen(false);
-                  onNavigate('customer-dashboard');
-                }}
-                className={`px-3 py-1 rounded text-xs font-semibold ${
-                  !isAdmin ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-700'
-                }`}
-              >
-                Customer
-              </button>
-              <button
-                onClick={() => {
-                  switchRole('admin');
-                  setMobileMenuOpen(false);
-                  onNavigate('admin-dashboard');
-                }}
-                className={`px-3 py-1 rounded text-xs font-semibold ${
-                  isAdmin ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700'
-                }`}
-              >
-                Admin
-              </button>
-            </div>
-          </div>
-
           <div className="flex flex-col space-y-1">
             {navLinks.map((link) => (
               <button

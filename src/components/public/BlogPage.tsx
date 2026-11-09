@@ -37,7 +37,7 @@ export const BlogPage: React.FC<{ onNavigateToService: (service: string) => void
     },
     {
       id: 4,
-      title: 'Atomic Transactions & Idempotency: Why Sayyada Guarantees Zero Double-Charges',
+      title: 'Atomic Transactions & Idempotency: Why Meenabty Guarantees Zero Double-Charges',
       category: 'Fintech Engineering',
       readTime: '5 min read',
       date: 'August 2026',
@@ -51,7 +51,7 @@ export const BlogPage: React.FC<{ onNavigateToService: (service: string) => void
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
       <div className="text-center max-w-2xl mx-auto">
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-          Sayyada Telecom & Fintech Insights
+          Meenabty Telecom & Fintech Insights
         </h1>
         <p className="text-sm text-slate-500 mt-2">
           Guides, market rate analyses, and engineering articles for Nigerian digital payment consumers.

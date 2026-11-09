@@ -60,7 +60,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         {/* Header Branding */}
         <div className="text-center pb-4 border-b border-slate-100">
           <div className="flex items-center justify-center gap-2 mb-1">
-            <span className="text-lg font-black tracking-tight text-emerald-800">SAYYADA DATASUB</span>
+            <span className="text-lg font-black tracking-tight text-emerald-800">MEENABTY DATASUB</span>
           </div>
           <p className="text-xs text-slate-500">Multi-Service VTU & Fintech Portal · Kano, Nigeria</p>
           <div className="mt-3 flex items-center justify-center gap-2">

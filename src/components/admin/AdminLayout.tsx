@@ -86,11 +86,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             className="flex items-center gap-2.5 text-left group"
           >
             <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-black text-base shadow-sm">
-              S
+              M
             </div>
             <div>
               <span className="text-sm font-black tracking-tight text-white block leading-tight">
-                SAYYADA<span className="text-emerald-400">ADMIN</span>
+                MEENABTY<span className="text-emerald-400">ADMIN</span>
               </span>
               <span className="text-[10px] text-slate-400 font-mono tracking-wide block">
                 SECURITY CONSOLE

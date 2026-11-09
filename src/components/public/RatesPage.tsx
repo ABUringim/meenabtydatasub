@@ -35,7 +35,7 @@ export const RatesPage: React.FC<{ onNavigateToRegister: () => void }> = ({ onNa
             </div>
 
             <h2 className="text-2xl font-bold tracking-tight">
-              Estimate Your Monthly Reseller Earnings with Sayyada
+              Estimate Your Monthly Reseller Earnings with Meenabty
             </h2>
 
             <div className="space-y-5 text-xs">

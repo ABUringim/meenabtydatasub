@@ -269,7 +269,7 @@ export const adminTransactionsService = {
       link.setAttribute('href', url);
       link.setAttribute(
         'download',
-        `Sayyada_Datasub_Transactions_${new Date().toISOString().split('T')[0]}.csv`
+        `Meenabty_Datasub_Transactions_${new Date().toISOString().split('T')[0]}.csv`
       );
       document.body.appendChild(link);
       link.click();

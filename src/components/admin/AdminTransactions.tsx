@@ -106,7 +106,7 @@ export const AdminTransactions: React.FC = () => {
       transaction_id: txn.id,
       transaction_ref: txn.reference,
       user_id: txn.user_id,
-      user_email: txn.user_email || 'customer@sayyadadatasub.com',
+      user_email: txn.user_email || 'customer@meenabtydatasub.com',
       user_phone: txn.recipient_details.phone || '08000000000',
       service: txn.service,
       amount: txn.amount,

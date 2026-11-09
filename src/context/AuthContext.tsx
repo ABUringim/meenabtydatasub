@@ -3,7 +3,7 @@ import { UserProfile, Role, KycTier } from '../types';
 import { storage } from '../services/storage';
 import { auth } from '../lib/firebase';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
-import { signIn as fbSignIn, signUp as fbSignUp } from '../lib/auth';
+import { signIn as fbSignIn, signUp as fbSignUp, signInWithGoogle as fbSignInWithGoogle } from '../lib/auth';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -15,6 +15,7 @@ interface AuthContextType {
   adminSessionActive: boolean;
   switchRole: (role: Role) => void;
   login: (email: string, password?: string) => Promise<boolean>;
+  loginWithGoogle: () => Promise<boolean>;
   adminLogin: (email: string, password?: string, totpCode?: string) => Promise<{ success: boolean; requires2fa?: boolean; error?: string }>;
   logout: () => Promise<void>;
   adminLogout: () => void;
@@ -61,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             suspended: false,
           };
           allUsers.push(found);
-          localStorage.setItem('sayyada_users_v2', JSON.stringify(allUsers));
+          localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
         }
         storage.setCurrentUserId(found.uid);
         setCurrentUser(found);
@@ -124,6 +125,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password = 'password123'): Promise<boolean> => {
     await fbSignIn(email, password);
+    return true;
+  };
+
+  const loginWithGoogle = async (): Promise<boolean> => {
+    const googleUser = await fbSignInWithGoogle();
+    if (googleUser && googleUser.email) {
+      const allUsers = storage.getUsers();
+      let found = allUsers.find((u) => u.email.toLowerCase() === googleUser.email?.toLowerCase());
+      if (!found) {
+        found = {
+          uid: googleUser.uid,
+          email: googleUser.email,
+          phone: (googleUser as any).phoneNumber || '08145239871',
+          name: googleUser.displayName || googleUser.email.split('@')[0].toUpperCase(),
+          tier: 1,
+          kyc_status: 'unverified',
+          role: 'customer',
+          wallet_balance: 500000,
+          ledger_balance: 500000,
+          hasPin: true,
+          twoFactorEnabled: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          suspended: false,
+        };
+        allUsers.push(found);
+        localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
+      }
+      storage.setCurrentUserId(found.uid);
+      setCurrentUser(found);
+      storage.recordAuditLog(
+        found.uid,
+        found.email,
+        'GOOGLE_SIGNIN_SUCCESS',
+        `Authenticated via Google Sign-In (${found.email})`,
+        null,
+        null,
+        found.role
+      );
+    }
     return true;
   };
 
@@ -279,6 +320,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         adminSessionActive,
         switchRole,
         login,
+        loginWithGoogle,
         adminLogin,
         logout,
         adminLogout,

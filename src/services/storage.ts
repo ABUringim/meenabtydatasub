@@ -25,35 +25,35 @@ import {
 import { INITIAL_PRODUCTS, INITIAL_PROVIDERS } from '../data/initialData';
 
 const STORAGE_KEYS = {
-  USERS: 'sayyada_users_v2',
-  TRANSACTIONS: 'sayyada_transactions_v2',
-  LEDGER: 'sayyada_ledger_v2',
-  BENEFICIARIES: 'sayyada_beneficiaries_v2',
-  ACTIVITY: 'sayyada_activity_v2',
-  RECEIPTS: 'sayyada_receipts_v2',
-  SPENDING: 'sayyada_spending_v2',
-  PRODUCTS: 'sayyada_products_v2',
-  DISPUTES: 'sayyada_disputes_v2',
-  AUDIT_LOGS: 'sayyada_audit_logs_v2',
-  ADMIN_STATS: 'sayyada_admin_stats_v2',
-  ADMIN_SERVICES: 'sayyada_admin_services_v2',
-  ADMIN_DAILY: 'sayyada_admin_daily_v2',
-  ADMIN_ACTIVITY: 'sayyada_admin_activity_v2',
-  PROVIDERS: 'sayyada_providers_v2',
-  PAYSTACK_CONFIG: 'sayyada_paystack_config_v2',
-  SETTINGS: 'sayyada_settings_v2',
-  BLOG_POSTS: 'sayyada_blog_posts_v2',
-  NOTIFICATIONS: 'sayyada_notifications_v2',
-  CURRENT_USER_ID: 'sayyada_current_user_id',
-  ADMIN_SESSION_TIMESTAMP: 'sayyada_admin_session_ts',
+  USERS: 'meenabty_users_v2',
+  TRANSACTIONS: 'meenabty_transactions_v2',
+  LEDGER: 'meenabty_ledger_v2',
+  BENEFICIARIES: 'meenabty_beneficiaries_v2',
+  ACTIVITY: 'meenabty_activity_v2',
+  RECEIPTS: 'meenabty_receipts_v2',
+  SPENDING: 'meenabty_spending_v2',
+  PRODUCTS: 'meenabty_products_v2',
+  DISPUTES: 'meenabty_disputes_v2',
+  AUDIT_LOGS: 'meenabty_audit_logs_v2',
+  ADMIN_STATS: 'meenabty_admin_stats_v2',
+  ADMIN_SERVICES: 'meenabty_admin_services_v2',
+  ADMIN_DAILY: 'meenabty_admin_daily_v2',
+  ADMIN_ACTIVITY: 'meenabty_admin_activity_v2',
+  PROVIDERS: 'meenabty_providers_v2',
+  PAYSTACK_CONFIG: 'meenabty_paystack_config_v2',
+  SETTINGS: 'meenabty_settings_v2',
+  BLOG_POSTS: 'meenabty_blog_posts_v2',
+  NOTIFICATIONS: 'meenabty_notifications_v2',
+  CURRENT_USER_ID: 'meenabty_current_user_id',
+  ADMIN_SESSION_TIMESTAMP: 'meenabty_admin_session_ts',
 };
 
 // Initial Owner user
 const DEFAULT_OWNER: UserProfile = {
-  uid: 'usr_owner_sayyada_01',
-  email: 'owner@sayyadadatasub.com',
+  uid: 'usr_owner_meenabty_01',
+  email: 'owner@meenabtydatasub.com',
   phone: '08099887766',
-  name: 'Alhaji Sayyada (Platform Owner)',
+  name: 'Alhaji Meenabty (Platform Owner)',
   tier: 2,
   kyc_status: 'verified',
   role: 'owner',
@@ -71,8 +71,8 @@ const DEFAULT_OWNER: UserProfile = {
 
 // Initial Operations Admin user
 const DEFAULT_ADMIN: UserProfile = {
-  uid: 'usr_admin_sayyada_01',
-  email: 'admin@sayyadadatasub.com',
+  uid: 'usr_admin_meenabty_01',
+  email: 'admin@meenabtydatasub.com',
   phone: '08023456789',
   name: 'Amina Sani (Operations Admin)',
   tier: 2,
@@ -92,7 +92,7 @@ const DEFAULT_ADMIN: UserProfile = {
 
 // Initial Customer user
 const DEFAULT_CUSTOMER: UserProfile = {
-  uid: 'usr_customer_sayyada_01',
+  uid: 'usr_customer_meenabty_01',
   email: 'aburingim1997@gmail.com',
   phone: '08145239871',
   name: 'Abubakar Ringim',
@@ -108,7 +108,7 @@ const DEFAULT_CUSTOMER: UserProfile = {
   virtual_account: {
     bankName: 'Wema Bank (Dedicated)',
     accountNumber: '9928374102',
-    accountName: 'SAYYADA-ABUBAKAR RINGIM',
+    accountName: 'MEENABTY-ABUBAKAR RINGIM',
   },
   ip_address: '105.112.48.91 (Lagos, NG)',
   last_login: new Date().toISOString(),
@@ -125,7 +125,7 @@ const INITIAL_SETTINGS: PlatformSettings = {
   allowlistIps: ['102.89.44.1', '102.89.44.12', '127.0.0.1'],
   supportPhone: '+234 814 523 9871',
   supportWhatsApp: '+234 814 523 9871',
-  supportEmail: 'support@sayyadadatasub.com',
+  supportEmail: 'support@meenabtydatasub.com',
   currencySymbol: '₦',
   timezone: 'Africa/Lagos (WAT)',
 };
@@ -134,7 +134,7 @@ const INITIAL_PAYSTACK_CONFIG: PaystackGatewayConfig = {
   publicKeyMasked: 'pk_live_981248921••••••••••••••••39',
   secretKeyMasked: 'sk_live_091823901••••••••••••••••72',
   testMode: false,
-  webhookUrl: 'https://api.sayyadadatasub.com/api/v1/paystack-webhook',
+  webhookUrl: 'https://api.meenabtydatasub.com/api/v1/paystack-webhook',
   lastWebhookReceivedAt: new Date(Date.now() - 15 * 60000).toISOString(),
   floatAlertThresholdNgn: 500000,
 };
@@ -551,7 +551,15 @@ const INITIAL_SPENDING: CustomerSpending[] = [
 class StorageService {
   private getItem<T>(key: string, defaultValue: T): T {
     try {
-      const data = localStorage.getItem(key);
+      let data = localStorage.getItem(key);
+      if (!data && key.startsWith('meenabty_')) {
+        const legacyKey = key.replace('meenabty_', 'sayyada_');
+        data = localStorage.getItem(legacyKey);
+        if (data) {
+          // Migrate automatically to meenabty_ key
+          localStorage.setItem(key, data);
+        }
+      }
       return data ? JSON.parse(data) : defaultValue;
     } catch {
       return defaultValue;
@@ -589,15 +597,9 @@ class StorageService {
     if (!localStorage.getItem(STORAGE_KEYS.PRODUCTS)) {
       this.setItem(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
     }
-    if (!localStorage.getItem(STORAGE_KEYS.PROVIDERS)) {
+    const savedProviders = this.getItem<VtuProviderConfig[]>(STORAGE_KEYS.PROVIDERS, []);
+    if (!savedProviders.length || !savedProviders.some((p) => p.code === 'bigisub')) {
       this.setItem(STORAGE_KEYS.PROVIDERS, INITIAL_PROVIDERS);
-    } else {
-      // Ensure BigiSub exists and is the primary active gateway
-      const existingProviders = this.getItem<VtuProviderConfig[]>(STORAGE_KEYS.PROVIDERS, []);
-      const hasBigisub = existingProviders.some((p) => p.code === 'bigisub');
-      if (!hasBigisub) {
-        this.setItem(STORAGE_KEYS.PROVIDERS, INITIAL_PROVIDERS);
-      }
     }
     if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) {
       this.setItem(STORAGE_KEYS.CURRENT_USER_ID, DEFAULT_CUSTOMER.uid);
@@ -1060,8 +1062,8 @@ class StorageService {
 
   // --- Providers & Paystack Config ---
   getProviders(): VtuProviderConfig[] {
-    const list = this.getItem<VtuProviderConfig[]>(STORAGE_KEYS.PROVIDERS, INITIAL_PROVIDERS);
-    if (!list || list.length === 0 || !list.some((p) => p.code === 'bigisub')) {
+    const list = this.getItem<VtuProviderConfig[]>(STORAGE_KEYS.PROVIDERS, []);
+    if (!list.length || !list.some((p) => p.code === 'bigisub')) {
       this.setItem(STORAGE_KEYS.PROVIDERS, INITIAL_PROVIDERS);
       return INITIAL_PROVIDERS;
     }
@@ -1131,16 +1133,16 @@ class StorageService {
   // --- Real-Time Admin Synchronization & Event Emitter ---
   public notifyAdmin(): void {
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('sayyada_admin_sync'));
+      window.dispatchEvent(new CustomEvent('meenabty_admin_sync'));
     }
   }
 
   public subscribeAdmin(callback: () => void): () => void {
     if (typeof window === 'undefined') return () => {};
     const listener = () => callback();
-    window.addEventListener('sayyada_admin_sync', listener);
+    window.addEventListener('meenabty_admin_sync', listener);
     return () => {
-      window.removeEventListener('sayyada_admin_sync', listener);
+      window.removeEventListener('meenabty_admin_sync', listener);
     };
   }
 
@@ -1326,7 +1328,7 @@ class StorageService {
     list.unshift(entry);
     this.setItem(STORAGE_KEYS.ADMIN_ACTIVITY, list.slice(0, 500));
     // Also sync to general audit logs for unified auditing
-    this.recordAuditLog(actorId, `${actorName}@sayyadadatasub.com`, action, target, before, after, actorRole);
+    this.recordAuditLog(actorId, `${actorName}@meenabtydatasub.com`, action, target, before, after, actorRole);
     this.notifyAdmin();
   }
 }

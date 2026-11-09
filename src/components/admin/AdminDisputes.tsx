@@ -67,7 +67,7 @@ export const AdminDisputes: React.FC = () => {
 
       storage.recordAuditLog(
         adminUser?.uid || 'admin',
-        adminUser?.email || 'admin@sayyadadatasub.com',
+        adminUser?.email || 'admin@meenabtydatasub.com',
         'DISPUTE_APPROVE_REFUND',
         `Ticket ${selectedDispute.id} (${selectedDispute.transaction_ref})`,
         { amount: selectedDispute.amount, notes: adminNotes }
@@ -82,7 +82,7 @@ export const AdminDisputes: React.FC = () => {
 
       storage.recordAuditLog(
         adminUser?.uid || 'admin',
-        adminUser?.email || 'admin@sayyadadatasub.com',
+        adminUser?.email || 'admin@meenabtydatasub.com',
         'DISPUTE_REJECT',
         `Ticket ${selectedDispute.id} (${selectedDispute.transaction_ref})`,
         { reason: adminNotes }
@@ -97,7 +97,7 @@ export const AdminDisputes: React.FC = () => {
 
       storage.recordAuditLog(
         adminUser?.uid || 'admin',
-        adminUser?.email || 'admin@sayyadadatasub.com',
+        adminUser?.email || 'admin@meenabtydatasub.com',
         'DISPUTE_ESCALATE_OWNER',
         `Ticket ${selectedDispute.id} (${selectedDispute.transaction_ref})`,
         { reason: adminNotes }

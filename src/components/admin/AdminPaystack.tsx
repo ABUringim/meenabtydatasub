@@ -75,7 +75,7 @@ export const AdminPaystack: React.FC = () => {
 
     storage.recordAuditLog(
       user?.uid || 'owner',
-      user?.email || 'owner@sayyadadatasub.com',
+      user?.email || 'owner@meenabtydatasub.com',
       'PAYSTACK_CONFIG_UPDATE',
       'Updated gateway mode and float alert threshold',
       { testMode, thresholdNgn }
@@ -125,7 +125,7 @@ export const AdminPaystack: React.FC = () => {
 
     storage.recordAuditLog(
       user?.uid || 'owner',
-      user?.email || 'owner@sayyadadatasub.com',
+      user?.email || 'owner@meenabtydatasub.com',
       'PAYSTACK_KEYS_ROTATED',
       'Rotated Paystack API Key Pair'
     );

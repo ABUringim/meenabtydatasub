@@ -1,13 +1,26 @@
-import { getActiveVtuProvider } from './providers';
+/**
+ * VTU Provider Interface
+ */
 
-export const vtuProvider = {
-  buyAirtime: (params: any) => getActiveVtuProvider().buyAirtime(params),
-  buyData: (params: any) => getActiveVtuProvider().buyData(params),
-  buyCable: (params: any) => getActiveVtuProvider().buyCable(params),
-  buyElectricity: (params: any) => getActiveVtuProvider().buyElectricity(params),
-  buyExamPin: (params: any) => getActiveVtuProvider().buyExamPin(params),
-  verifyMeter: (params: any) => getActiveVtuProvider().verifyMeter(params),
-  verifyCable: (params: any) => getActiveVtuProvider().verifyCable(params),
-  requery: (params: any) => getActiveVtuProvider().requery(params),
-  healthCheck: () => getActiveVtuProvider().healthCheck(),
-};
+import { NormalizedVtuResult } from './normalizers/bigisubNormalizer';
+
+export interface VendingParams {
+  service: 'airtime' | 'data' | 'electricity' | 'tv' | 'exam';
+  provider: string;
+  amountNgn: number;
+  recipientDetails: Record<string, any>;
+  reference: string;
+}
+
+export interface IVtuProvider {
+  name: string;
+  code: string;
+  buyAirtime(params: VendingParams): Promise<NormalizedVtuResult>;
+  buyData(params: VendingParams): Promise<NormalizedVtuResult>;
+  buyElectricity(params: VendingParams): Promise<NormalizedVtuResult>;
+  buyCableTv(params: VendingParams): Promise<NormalizedVtuResult>;
+  buyExamPin(params: VendingParams): Promise<NormalizedVtuResult>;
+  verifyMeter(disco: string, meterNo: string, meterType: string): Promise<any>;
+  verifyCable(cable: string, iuc: string): Promise<any>;
+  requery(reference: string, operatorRef?: string): Promise<any>;
+}

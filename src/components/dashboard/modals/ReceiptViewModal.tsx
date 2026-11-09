@@ -78,7 +78,7 @@ export const ReceiptViewModal: React.FC<ReceiptViewModalProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-                <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">SAYYADA DATASUB</h3>
+                <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">MEENABTY DATASUB</h3>
               </div>
               <p className="text-[10px] text-slate-500 mt-0.5">Automated Telecom & Utility Hub · Kano, NG</p>
             </div>

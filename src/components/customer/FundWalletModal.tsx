@@ -68,7 +68,7 @@ export const FundWalletModal: React.FC<FundWalletModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Fund Your Sayyada Wallet"
+      title="Fund Your Meenabty Wallet"
       subtitle="Instant 24/7 automated wallet credit with zero processing fees"
       maxWidth="md"
     >
@@ -180,7 +180,7 @@ export const FundWalletModal: React.FC<FundWalletModalProps> = ({
               </p>
               <p className="text-xs text-emerald-800 leading-relaxed">
                 Transfer any amount from your bank app (Access, GTB, Kuda, OPay, etc.) directly to this account number.
-                Your Sayyada wallet will be credited automatically within 10 seconds.
+                Your Meenabty wallet will be credited automatically within 10 seconds.
               </p>
 
               <div className="bg-white p-3 rounded-lg border border-emerald-200 space-y-2">
@@ -206,7 +206,7 @@ export const FundWalletModal: React.FC<FundWalletModalProps> = ({
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500">Account Name</span>
                   <span className="font-semibold text-slate-900 text-right">
-                    {user?.virtual_account?.accountName || `SAYYADA-${user?.name.toUpperCase()}`}
+                    {user?.virtual_account?.accountName || `MEENABTY-${user?.name.toUpperCase()}`}
                   </span>
                 </div>
               </div>

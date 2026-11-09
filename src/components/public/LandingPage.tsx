@@ -66,8 +66,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const faqs = [
     {
-      q: 'What is Sayyada Datasub and how fast is vending?',
-      a: 'Sayyada Datasub is an automated fintech portal for instant VTU telecom recharge, data bundles, and utility bill settlements in Nigeria. Over 99.8% of transactions are delivered within 2 to 5 seconds server-to-server.',
+      q: 'What is Meenabty Datasub and how fast is vending?',
+      a: 'Meenabty Datasub is an automated fintech portal for instant VTU telecom recharge, data bundles, and utility bill settlements in Nigeria. Over 99.8% of transactions are delivered within 2 to 5 seconds server-to-server.',
     },
     {
       q: 'What happens if a transaction fails due to operator network downtime?',
@@ -382,7 +382,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 Designed for Business Resellers & High-Volume Portals
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Connect your business or kiosk to Sayyada Datasub. Benefit from industry-leading wholesale margins,
+                Connect your business or kiosk to Meenabty Datasub. Benefit from industry-leading wholesale margins,
                 instant automated bank transfer funding, and unified REST API webhook integrations.
               </p>
               <div className="pt-2">

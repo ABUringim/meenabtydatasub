@@ -24,7 +24,7 @@ export function generateReceiptPdf(txn: Transaction): void {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text('SAYYADA DATASUB', 12, 16);
+  doc.text('MEENABTY DATASUB', 12, 16);
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
@@ -140,7 +140,7 @@ export function generateReceiptPdf(txn: Transaction): void {
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.text(
-    'This is an authentic computer-generated receipt issued by Sayyada Datasub Integrated Technologies.',
+    'This is an authentic computer-generated receipt issued by Meenabty Datasub Integrated Technologies.',
     pageWidth / 2,
     y,
     { align: 'center' }
@@ -148,7 +148,7 @@ export function generateReceiptPdf(txn: Transaction): void {
 
   y += 4;
   doc.text(
-    'For inquiries or operator reversals, email: support@sayyadadatasub.com | Hotline: +234 814 523 9871',
+    'For inquiries or operator reversals, email: support@meenabtydatasub.com | Hotline: +234 814 523 9871',
     pageWidth / 2,
     y,
     { align: 'center' }
@@ -157,10 +157,10 @@ export function generateReceiptPdf(txn: Transaction): void {
   y += 4;
   doc.setTextColor(4, 120, 87);
   doc.setFont('helvetica', 'bold');
-  doc.text('https://sayyadadatasub.com · Ring Road Commercial Complex, Kano', pageWidth / 2, y, {
+  doc.text('https://meenabtydatasub.com · Ring Road Commercial Complex, Kano', pageWidth / 2, y, {
     align: 'center',
   });
 
   // Trigger download
-  doc.save(`SayyadaDatasub-Receipt-${txn.reference}.pdf`);
+  doc.save(`MeenabtyDatasub-Receipt-${txn.reference}.pdf`);
 }

@@ -80,7 +80,7 @@ export const AdminRoles: React.FC = () => {
 
     storage.recordAuditLog(
       currentAuthUser?.uid || 'owner',
-      currentAuthUser?.email || 'owner@sayyadadatasub.com',
+      currentAuthUser?.email || 'owner@meenabtydatasub.com',
       'ROLE_CHANGE_AUTHORIZED',
       `Changed role for ${selectedUser.email} from ${beforeRole} to ${targetRole}`,
       { beforeRole, targetRole }

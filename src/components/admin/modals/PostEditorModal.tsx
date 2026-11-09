@@ -353,7 +353,7 @@ export const PostEditorModal: React.FC<PostEditorModalProps> = ({
                 value={seoTitle}
                 onChange={(e) => setSeoTitle(e.target.value)}
                 maxLength={70}
-                placeholder="Sayyada Datasub | Guide Title"
+                placeholder="Meenabty Datasub | Guide Title"
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               />
             </div>
@@ -374,7 +374,7 @@ export const PostEditorModal: React.FC<PostEditorModalProps> = ({
 
             {/* Google SERP Card Preview */}
             <div className="p-3 bg-white rounded-xl text-slate-900 space-y-1">
-              <span className="text-[10px] text-slate-500 font-mono">https://sayyadadatasub.com/blog/{slug || 'post-slug'}</span>
+              <span className="text-[10px] text-slate-500 font-mono">https://meenabtydatasub.com/blog/{slug || 'post-slug'}</span>
               <p className="text-sm font-semibold text-blue-700 hover:underline cursor-pointer line-clamp-1">
                 {seoTitle || title || 'Article Title Preview'}
               </p>

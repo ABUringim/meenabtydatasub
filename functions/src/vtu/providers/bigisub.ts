@@ -1,297 +1,199 @@
 /**
- * BigiSub Live VTU Provider Implementation
- * Authenticated via `Authorization: Token <token>` header.
- * Interacts with bigisub.ng/api/v1/ endpoints for Airtime, Data, TV, Electricity, and Exam Pins.
+ * BigiSub VTU Gateway Implementation
+ * Direct integration with bigisub.ng production API.
  */
 
-import axios, { AxiosInstance } from 'axios';
-import { getBigisubToken, getBigisubBaseUrl, sanitizeLog } from '../../config/secrets';
-import {
-  normalizeBigisubResponse,
-  mapNetworkToBigisubId,
-  mapDiscoToBigisubCompany,
-  NormalizedVtuResult,
-} from '../normalizers/bigisubNormalizer';
-import { mapBigisubError } from '../errors/bigisubErrors';
+import axios from 'axios';
+import { IVtuProvider, VendingParams } from '../vtuProvider';
+import { BIGISUB_BASE_URL, BIGISUB_TOKEN_SECRET } from '../../config/secrets';
+import { normalizeBigiSubResponse, NormalizedVtuResult } from '../normalizers/bigisubNormalizer';
+import { mapBigiSubError } from '../errors/bigisubErrors';
 
-export class BigisubProvider {
-  private client: AxiosInstance;
+export class BigiSubProvider implements IVtuProvider {
+  name = 'BigiSub VTU Gateway';
+  code = 'bigisub';
 
-  constructor() {
-    this.client = axios.create({
-      baseURL: getBigisubBaseUrl(),
-      timeout: 25000, // 25s timeout
-      headers: {
-        'Content-Type': 'application/json',
+  private getHeaders() {
+    return {
+      Authorization: `Token ${BIGISUB_TOKEN_SECRET}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    };
+  }
+
+  private mapNetwork(network: string): number {
+    const n = network.toUpperCase();
+    if (n.includes('MTN')) return 1;
+    if (n.includes('GLO')) return 2;
+    if (n.includes('9MOB') || n.includes('ETISALAT')) return 3;
+    if (n.includes('AIRTEL')) return 4;
+    return 1;
+  }
+
+  private mapDisco(disco: string): number {
+    const d = disco.toUpperCase();
+    if (d.includes('ABUJA') || d.includes('AEDC')) return 1;
+    if (d.includes('EKO') || d.includes('EKEDC')) return 2;
+    if (d.includes('IKEJA') || d.includes('IKEDC')) return 3;
+    if (d.includes('IBADAN') || d.includes('IBEDC')) return 4;
+    if (d.includes('JOS') || d.includes('JED')) return 5;
+    if (d.includes('KADUNA') || d.includes('KAEDCO')) return 6;
+    if (d.includes('KANO') || d.includes('KEDCO')) return 7;
+    if (d.includes('PORT HARCOURT') || d.includes('PHED')) return 8;
+    if (d.includes('ENUGU') || d.includes('EEDC')) return 9;
+    if (d.includes('BENIN') || d.includes('BEDC')) return 10;
+    if (d.includes('YOLA') || d.includes('YEDC')) return 11;
+    return 7;
+  }
+
+  private mapCable(cable: string): number {
+    const c = cable.toUpperCase();
+    if (c.includes('DSTV')) return 1;
+    if (c.includes('GOTV')) return 2;
+    if (c.includes('STARTIMES') || c.includes('STAR')) return 3;
+    return 1;
+  }
+
+  async buyAirtime(params: VendingParams): Promise<NormalizedVtuResult> {
+    try {
+      const netId = this.mapNetwork(params.provider || params.recipientDetails.network || 'MTN');
+      const phone = (params.recipientDetails.phone || '').replace(/\s+/g, '');
+      const res = await axios.post(
+        `${BIGISUB_BASE_URL}/airtime_topup/`,
+        {
+          network: netId,
+          amount: params.amountNgn,
+          phone_number: phone,
+          airtime_type: 'vtu',
+        },
+        { headers: this.getHeaders(), timeout: 20000 }
+      );
+      return normalizeBigiSubResponse('airtime', res.data, params.amountNgn, params.recipientDetails);
+    } catch (err: any) {
+      throw new Error(mapBigiSubError(err));
+    }
+  }
+
+  async buyData(params: VendingParams): Promise<NormalizedVtuResult> {
+    try {
+      const netId = this.mapNetwork(params.provider || params.recipientDetails.network || 'MTN');
+      const phone = (params.recipientDetails.phone || '').replace(/\s+/g, '');
+      const plan = params.recipientDetails.planCode || params.recipientDetails.planId || 1;
+      const res = await axios.post(
+        `${BIGISUB_BASE_URL}/data_topup/`,
+        {
+          network: netId,
+          plan,
+          phone_number: phone,
+        },
+        { headers: this.getHeaders(), timeout: 25000 }
+      );
+      return normalizeBigiSubResponse('data', res.data, params.amountNgn, params.recipientDetails);
+    } catch (err: any) {
+      throw new Error(mapBigiSubError(err));
+    }
+  }
+
+  async buyElectricity(params: VendingParams): Promise<NormalizedVtuResult> {
+    try {
+      const discoId = this.mapDisco(params.provider || params.recipientDetails.disco || '');
+      const meterNo = (params.recipientDetails.meterNo || '').trim();
+      const meterType = (params.recipientDetails.meterType || 'prepaid').toLowerCase();
+      const res = await axios.post(
+        `${BIGISUB_BASE_URL}/meter_pay/`,
+        {
+          disco: discoId,
+          meter_number: meterNo,
+          meter_type: meterType,
+          amount: params.amountNgn,
+        },
+        { headers: this.getHeaders(), timeout: 30000 }
+      );
+      return normalizeBigiSubResponse('electricity', res.data, params.amountNgn, params.recipientDetails);
+    } catch (err: any) {
+      throw new Error(mapBigiSubError(err));
+    }
+  }
+
+  async buyCableTv(params: VendingParams): Promise<NormalizedVtuResult> {
+    try {
+      const cableId = this.mapCable(params.provider || '');
+      const iuc = (params.recipientDetails.smartcardNo || '').trim();
+      const pkg = params.recipientDetails.packageId || 1;
+      const res = await axios.post(
+        `${BIGISUB_BASE_URL}/cable_purchase/`,
+        {
+          cable: cableId,
+          package: pkg,
+          iuc,
+        },
+        { headers: this.getHeaders(), timeout: 25000 }
+      );
+      return normalizeBigiSubResponse('tv', res.data, params.amountNgn, params.recipientDetails);
+    } catch (err: any) {
+      throw new Error(mapBigiSubError(err));
+    }
+  }
+
+  async buyExamPin(params: VendingParams): Promise<NormalizedVtuResult> {
+    try {
+      const examName = (params.provider || params.recipientDetails.examType || 'WAEC').toUpperCase();
+      const quantity = Number(params.recipientDetails.quantity || 1);
+      const res = await axios.post(
+        `${BIGISUB_BASE_URL}/exam_pin_purchase/`,
+        {
+          exam_name: examName,
+          quantity,
+        },
+        { headers: this.getHeaders(), timeout: 25000 }
+      );
+      return normalizeBigiSubResponse('exam', res.data, params.amountNgn, params.recipientDetails);
+    } catch (err: any) {
+      throw new Error(mapBigiSubError(err));
+    }
+  }
+
+  async verifyMeter(disco: string, meterNo: string, meterType: string): Promise<any> {
+    const discoId = this.mapDisco(disco);
+    const res = await axios.post(
+      `${BIGISUB_BASE_URL}/meter_validate/`,
+      {
+        disco: discoId,
+        meter_number: meterNo.trim(),
+        meter_type: meterType,
       },
-    });
-
-    // Request interceptor to attach fresh token and sanitize logging
-    this.client.interceptors.request.use((config) => {
-      const token = getBigisubToken();
-      config.headers.Authorization = `Token ${token}`;
-      return config;
-    });
+      { headers: this.getHeaders(), timeout: 15000 }
+    );
+    return res.data;
   }
 
-  /**
-   * 1. Airtime Topup
-   * POST /api/v1/airtime_topup/
-   */
-  async buyAirtime(params: {
-    network: string;
-    amountNaira: number;
-    phone: string;
-    airtimeType?: 'vtu' | 'share';
-    idempotencyKey: string;
-  }): Promise<NormalizedVtuResult> {
-    const payload = {
-      network: mapNetworkToBigisubId(params.network),
-      amount: params.amountNaira.toString(),
-      phone_number: params.phone,
-      airtime_type: params.airtimeType || 'vtu',
-    };
-
-    try {
-      const res = await this.client.post('airtime_topup/', payload);
-      return normalizeBigisubResponse('airtime', res.data);
-    } catch (err: any) {
-      const mapped = mapBigisubError(err);
-      throw { ...mapped, rawResponse: err?.response?.data };
-    }
+  async verifyCable(cable: string, iuc: string): Promise<any> {
+    const cableId = this.mapCable(cable);
+    const res = await axios.post(
+      `${BIGISUB_BASE_URL}/verify_cable/`,
+      {
+        cable: cableId,
+        iuc: iuc.trim(),
+      },
+      { headers: this.getHeaders(), timeout: 15000 }
+    );
+    return res.data;
   }
 
-  /**
-   * 2. Data Topup
-   * POST /api/v1/data_topup/
-   */
-  async buyData(params: {
-    network: string;
-    planCode: string | number;
-    phone: string;
-    idempotencyKey: string;
-  }): Promise<NormalizedVtuResult> {
-    const payload = {
-      network: mapNetworkToBigisubId(params.network),
-      plan: params.planCode,
-      phone_number: params.phone,
-    };
-
+  async requery(reference: string, operatorRef?: string): Promise<any> {
     try {
-      const res = await this.client.post('data_topup/', payload);
-      return normalizeBigisubResponse('data', res.data);
+      const res = await axios.post(
+        `${BIGISUB_BASE_URL}/requery/`,
+        {
+          tran_id: operatorRef || reference,
+        },
+        { headers: this.getHeaders(), timeout: 15000 }
+      );
+      return res.data;
     } catch (err: any) {
-      const mapped = mapBigisubError(err);
-      throw { ...mapped, rawResponse: err?.response?.data };
-    }
-  }
-
-  /**
-   * 3. Cable TV Verification
-   * POST /api/v1/verify_cable/
-   */
-  async verifyCable(params: {
-    provider: string; // DSTV, GOTV, STARTIMES
-    smartcard: string;
-  }): Promise<{ customerName: string; currentBouquet?: string; valid: boolean }> {
-    const payload = {
-      cable: params.provider.toLowerCase(),
-      iuc: params.smartcard,
-    };
-
-    try {
-      const res = await this.client.post('verify_cable/', payload);
-      const data = res.data;
-      const customerName = data.Customer_Name || data.customer_name || data.name || 'Verified Subscriber';
-      return {
-        customerName,
-        currentBouquet: data.current_bouquet || data.package,
-        valid: true,
-      };
-    } catch (err: any) {
-      const mapped = mapBigisubError(err);
-      throw { ...mapped, message: 'Invalid smartcard or IUC number.' };
-    }
-  }
-
-  /**
-   * 4. Cable TV Bouquet Purchase
-   * POST /api/v1/cable_purchase/
-   */
-  async buyCable(params: {
-    provider: string;
-    smartcard: string;
-    planCode: string | number;
-    phone?: string;
-    idempotencyKey: string;
-  }): Promise<NormalizedVtuResult> {
-    const payload = {
-      cable: params.provider.toLowerCase(),
-      iuc: params.smartcard,
-      cable_plan: params.planCode,
-      ...(params.phone ? { phone_number: params.phone } : {}),
-    };
-
-    try {
-      const res = await this.client.post('cable_purchase/', payload);
-      return normalizeBigisubResponse('tv', res.data);
-    } catch (err: any) {
-      const mapped = mapBigisubError(err);
-      throw { ...mapped, rawResponse: err?.response?.data };
-    }
-  }
-
-  /**
-   * 5. Electricity Meter Validation
-   * POST /api/v1/meter_validate/
-   */
-  async verifyMeter(params: {
-    disco: string;
-    meterNumber: string;
-    meterType: 'prepaid' | 'postpaid';
-  }): Promise<{ customerName: string; customerAddress?: string; disco: string; valid: boolean }> {
-    const payload = {
-      company: mapDiscoToBigisubCompany(params.disco),
-      meter_no: params.meterNumber,
-      meter_type: params.meterType,
-    };
-
-    try {
-      const res = await this.client.post('meter_validate/', payload);
-      const data = res.data;
-      const customerName = data.Customer_Name || data.customer_name || data.name || 'Verified Consumer';
-      const customerAddress = data.Customer_Address || data.address || 'Service Area';
-      return {
-        customerName,
-        customerAddress,
-        disco: params.disco,
-        valid: true,
-      };
-    } catch (err: any) {
-      const mapped = mapBigisubError(err);
-      throw { ...mapped, message: 'Invalid electricity meter number.' };
-    }
-  }
-
-  /**
-   * 6. Electricity Meter Payment
-   * POST /api/v1/meter_pay/
-   */
-  async buyElectricity(params: {
-    disco: string;
-    meterNumber: string;
-    meterType: 'prepaid' | 'postpaid';
-    amountNaira: number;
-    phone: string;
-    customerName?: string;
-    customerAddress?: string;
-    idempotencyKey: string;
-  }): Promise<NormalizedVtuResult> {
-    const payload = {
-      company: mapDiscoToBigisubCompany(params.disco),
-      meter_no: params.meterNumber,
-      meter_type: params.meterType,
-      phone_number: params.phone,
-      amount: params.amountNaira.toString(),
-      Customer_name: params.customerName || 'Ayo',
-      Customer_address: params.customerAddress || 'Service Area',
-    };
-
-    try {
-      const res = await this.client.post('meter_pay/', payload);
-      return normalizeBigisubResponse('electricity', res.data);
-    } catch (err: any) {
-      const mapped = mapBigisubError(err);
-      throw { ...mapped, rawResponse: err?.response?.data };
-    }
-  }
-
-  /**
-   * 7. Exam PIN Purchase
-   * POST /api/v1/exam_pin_purchase/
-   */
-  async buyExamPin(params: {
-    examType: string; // WAEC, NECO, JAMB, NABTEB
-    quantity: number;
-    idempotencyKey: string;
-  }): Promise<NormalizedVtuResult> {
-    const payload = {
-      exam_name: params.examType.toLowerCase(),
-      quantity: params.quantity,
-    };
-
-    try {
-      const res = await this.client.post('exam_pin_purchase/', payload);
-      return normalizeBigisubResponse('exam', res.data);
-    } catch (err: any) {
-      const mapped = mapBigisubError(err);
-      throw { ...mapped, rawResponse: err?.response?.data };
-    }
-  }
-
-  /**
-   * 8. Requery Transaction Status
-   * Queries BigiSub status using either tran_id or request_id
-   */
-  async requery(params: {
-    tranId?: string;
-    requestId?: string;
-    service?: string;
-  }): Promise<NormalizedVtuResult> {
-    try {
-      const endpoint = params.service ? `${params.service}_topup/requery/` : 'requery/';
-      const res = await this.client.post(endpoint, {
-        tran_id: params.tranId,
-        request_id: params.requestId,
-      });
-      return normalizeBigisubResponse(params.service || 'vtu', res.data);
-    } catch (err: any) {
-      const mapped = mapBigisubError(err);
-      throw { ...mapped, rawResponse: err?.response?.data };
-    }
-  }
-
-  /**
-   * 9. Health Check
-   * Pings the API to verify token authentication and latency without placing a real order.
-   */
-  async healthCheck(): Promise<{
-    status: 'ok' | 'down';
-    latencyMs: number;
-    provider: string;
-    message: string;
-  }> {
-    const startTime = Date.now();
-    try {
-      // Lightweight call to verify authentication token
-      await this.client.get('', { timeout: 8000 });
-      const latencyMs = Date.now() - startTime;
-      return {
-        status: 'ok',
-        latencyMs,
-        provider: 'bigisub',
-        message: 'BigiSub Gateway Handshake Verified (HTTP 200 OK)',
-      };
-    } catch (err: any) {
-      const latencyMs = Date.now() - startTime;
-      // Even if root path returns 404/200, if token authenticated without 401/403, connection is verified
-      const httpStatus = err?.response?.status;
-      if (httpStatus && httpStatus !== 401 && httpStatus !== 403 && httpStatus < 500) {
-        return {
-          status: 'ok',
-          latencyMs,
-          provider: 'bigisub',
-          message: `BigiSub Handshake Verified (HTTP ${httpStatus})`,
-        };
-      }
-      return {
-        status: 'down',
-        latencyMs,
-        provider: 'bigisub',
-        message: err?.response?.data?.detail || err?.message || 'Connection failed',
-      };
+      return { status: 'reconciled_fallback', reference };
     }
   }
 }
 
-export const bigisubProvider = new BigisubProvider();
+export const bigiSubProvider = new BigiSubProvider();

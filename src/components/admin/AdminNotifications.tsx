@@ -78,7 +78,7 @@ export const AdminNotifications: React.FC = () => {
     storage.addNotification(campaign);
     storage.recordAuditLog(
       user?.uid || 'admin',
-      user?.email || 'admin@sayyadadatasub.com',
+      user?.email || 'admin@meenabtydatasub.com',
       'NOTIFICATION_BROADCAST',
       `Sent ${type} campaign: "${title}" to ${count} recipients`
     );

@@ -132,7 +132,7 @@ export const RemitService: React.FC<RemitServiceProps> = ({ onNavigateToKyc }) =
           <div>
             <h2 className="text-base font-bold text-slate-900">Remit — Instant Money Transfer</h2>
             <p className="text-xs text-slate-500">
-              Transfer funds from your Sayyada wallet to any commercial or microfinance bank in Nigeria
+              Transfer funds from your Meenabty wallet to any commercial or microfinance bank in Nigeria
             </p>
           </div>
         </div>

@@ -58,7 +58,7 @@ export const AdminAuditLogs: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `sayyada_audit_log_export_${Date.now()}.csv`);
+    link.setAttribute('download', `meenabty_audit_log_export_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

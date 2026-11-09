@@ -65,7 +65,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onReturnToHom
   };
 
   const fillDemoOwner = () => {
-    setEmail('owner@sayyadadatasub.com');
+    setEmail('owner@meenabtydatasub.com');
     setPassword('OwnerSecure2026!');
     setRequires2fa(true);
     setTotpCode('123456');
@@ -73,7 +73,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onReturnToHom
   };
 
   const fillDemoAdmin = () => {
-    setEmail('admin@sayyadadatasub.com');
+    setEmail('admin@meenabtydatasub.com');
     setPassword('AdminSecure2026!');
     setRequires2fa(true);
     setTotpCode('123456');
@@ -96,7 +96,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onReturnToHom
             <Lock className="w-6 h-6" />
           </div>
           <h1 className="text-xl font-black tracking-tight text-white">
-            Sayyada Datasub Security Portal
+            Meenabty Datasub Security Portal
           </h1>
           <p className="text-xs text-slate-400">
             Administrative & Owner Operations Console · Tier 3 Isolated Route
@@ -143,7 +143,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onReturnToHom
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="staff@sayyadadatasub.com"
+                    placeholder="staff@meenabtydatasub.com"
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>

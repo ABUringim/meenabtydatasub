@@ -47,7 +47,7 @@ export const AdminSettings: React.FC = () => {
 
     storage.recordAuditLog(
       user?.uid || 'admin',
-      user?.email || 'admin@sayyadadatasub.com',
+      user?.email || 'admin@meenabtydatasub.com',
       'PLATFORM_SETTINGS_UPDATE',
       `Maintenance: ${maintenanceMode}, Support updated`,
       { maintenanceMode, maintenanceMessage, supportPhone, supportEmail, allowlistIps: ips }

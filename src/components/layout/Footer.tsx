@@ -14,10 +14,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-extrabold text-base">
-                S
+                M
               </div>
               <span className="text-base font-bold text-white tracking-tight">
-                SAYYADA<span className="text-emerald-400">DATASUB</span>
+                MEENABTY<span className="text-emerald-400">DATASUB</span>
               </span>
             </div>
             <p className="text-slate-400 leading-relaxed pr-6">
@@ -108,7 +108,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>support@sayyadadatasub.com</span>
+                <span>support@meenabtydatasub.com</span>
               </li>
               <li className="pt-2">
                 <button
@@ -123,7 +123,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         </div>
 
         <div className="mt-12 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
-          <p>© {new Date().getFullYear()} Sayyada Datasub Integrated Technologies. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Meenabty Datasub Integrated Technologies. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <button onClick={() => onNavigate('faq')} className="hover:text-slate-300">FAQ</button>
             <span>·</span>

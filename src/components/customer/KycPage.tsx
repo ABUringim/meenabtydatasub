@@ -184,7 +184,7 @@ export const KycPage: React.FC = () => {
           <div className="flex items-center gap-2 pt-3 text-[11px] text-slate-400">
             <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>
-              Your identity credentials are encrypted and validated via NIBSS. Sayyada does not store raw BVN details.
+              Your identity credentials are encrypted and validated via NIBSS. Meenabty does not store raw BVN details.
             </span>
           </div>
         </form>

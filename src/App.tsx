@@ -302,7 +302,7 @@ function MainApp() {
                 </h1>
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 text-xs text-slate-600 leading-relaxed space-y-4 shadow-xs">
                   <p>
-                    Sayyada Datasub Integrated Technologies provides automated telecommunications value-added services
+                    Meenabty Datasub Integrated Technologies provides automated telecommunications value-added services
                     (VTU), electricity STS prepaid tokens, and utility payments. Every transaction is processed with
                     server-side cryptographic idempotency keys.
                   </p>

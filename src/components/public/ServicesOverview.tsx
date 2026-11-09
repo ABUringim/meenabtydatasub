@@ -62,7 +62,7 @@ export const ServicesOverview: React.FC<{ onSelectService: (id: string) => void 
       name: 'Remit — Inter-Bank Transfers',
       icon: SendHorizontal,
       color: 'bg-teal-50 text-teal-700',
-      description: 'Transfer funds from your Sayyada wallet to any Nigerian commercial or microfinance bank account (NIP).',
+      description: 'Transfer funds from your Meenabty wallet to any Nigerian commercial or microfinance bank account (NIP).',
       bullets: ['Live NUBAN name enquiry', 'Low flat NIP transfer fee of ₦25', 'Tier 2 BVN/NIN compliance'],
     },
     {
@@ -106,7 +106,7 @@ export const ServicesOverview: React.FC<{ onSelectService: (id: string) => void 
           Comprehensive Service Catalog
         </h1>
         <p className="text-sm text-slate-500 mt-2">
-          Explore all 10 digital top-up, telecom, utility, and fintech vending services supported on Sayyada Datasub.
+          Explore all 10 digital top-up, telecom, utility, and fintech vending services supported on Meenabty Datasub.
         </p>
       </div>
 

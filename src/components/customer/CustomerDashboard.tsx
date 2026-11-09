@@ -185,7 +185,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
               <div>
                 <p className="text-[11px] text-slate-500">Beneficiary Name</p>
                 <p className="text-xs font-medium text-slate-700 truncate">
-                  {user?.virtual_account?.accountName || `SAYYADA-${user?.name.toUpperCase()}`}
+                  {user?.virtual_account?.accountName || `MEENABTY-${user?.name.toUpperCase()}`}
                 </p>
               </div>
             </div>
