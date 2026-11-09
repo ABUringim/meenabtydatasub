@@ -590,53 +590,14 @@ class StorageService {
       this.setItem(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
     }
     if (!localStorage.getItem(STORAGE_KEYS.PROVIDERS)) {
-      this.setItem(STORAGE_KEYS.PROVIDERS, [
-        {
-          id: 'vtpass',
-          name: 'VTPass Aggregator Hub',
-          code: 'vtpass',
-          active: true,
-          isSandbox: false,
-          status: 'healthy',
-          successRate: 99.8,
-          balanceNgn: 4500000,
-          apiUrl: 'https://api.vtpass.com/api',
-          apiKeyMasked: 'vtp_live_9482••••••••••••••',
-          secretKeyMasked: 'sec_vtp_0192••••••••••••••',
-          fallbackOrder: 1,
-          lastTestedAt: new Date().toISOString(),
-        },
-        {
-          id: 'clubkash',
-          name: 'ClubKash Direct Connect',
-          code: 'clubkash',
-          active: false,
-          isSandbox: false,
-          status: 'healthy',
-          successRate: 99.4,
-          balanceNgn: 1850000,
-          apiUrl: 'https://clubkash.com/api/v2',
-          apiKeyMasked: 'clk_live_2819••••••••••••••',
-          secretKeyMasked: 'sec_clk_8821••••••••••••••',
-          fallbackOrder: 2,
-          lastTestedAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-        {
-          id: 'interswitch',
-          name: 'Interswitch Quickteller API',
-          code: 'interswitch',
-          active: false,
-          isSandbox: false,
-          status: 'healthy',
-          successRate: 99.9,
-          balanceNgn: 12000000,
-          apiUrl: 'https://api.interswitch.ng/quickteller',
-          apiKeyMasked: 'isw_live_0019••••••••••••••',
-          secretKeyMasked: 'sec_isw_9918••••••••••••••',
-          fallbackOrder: 3,
-          lastTestedAt: new Date(Date.now() - 7200000).toISOString(),
-        },
-      ]);
+      this.setItem(STORAGE_KEYS.PROVIDERS, INITIAL_PROVIDERS);
+    } else {
+      // Ensure BigiSub exists and is the primary active gateway
+      const existingProviders = this.getItem<VtuProviderConfig[]>(STORAGE_KEYS.PROVIDERS, []);
+      const hasBigisub = existingProviders.some((p) => p.code === 'bigisub');
+      if (!hasBigisub) {
+        this.setItem(STORAGE_KEYS.PROVIDERS, INITIAL_PROVIDERS);
+      }
     }
     if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) {
       this.setItem(STORAGE_KEYS.CURRENT_USER_ID, DEFAULT_CUSTOMER.uid);

@@ -133,6 +133,14 @@ class VtuProviderService {
   async vendService(request: VendingRequestPayload): Promise<Transaction> {
     const { service, provider, amountKobo, costKobo, profitKobo, userId, reference, recipientDetails } = request;
 
+    // Enforce honest scope: BigiSub supports airtime, data, tv, electricity, exam
+    const isSupportedByBigisub = ['airtime', 'data', 'tv', 'electricity', 'exam'].includes(service);
+    if (!isSupportedByBigisub) {
+      throw new Error(
+        `${service.toUpperCase()} is reserved for separate provider integration and remains Coming Soon.`
+      );
+    }
+
     // Check idempotency first
     const existing = storage.getTransactionByReference(reference);
     if (existing) {

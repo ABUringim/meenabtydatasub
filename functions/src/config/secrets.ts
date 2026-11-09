@@ -1,14 +1,22 @@
 /**
- * Sayyada Datasub — Secret Manager Configuration
+ * Sayyada Datasub — Firebase Secret Manager Configuration
  * Ensures provider credentials are read strictly server-side and never exposed to the client.
  */
 
-// In production Firebase Cloud Functions, secrets can be defined using defineSecret
-// or injected via environment / Google Secret Manager.
-const FALLBACK_TOKEN = '298ef51c9e7c646836e80b2a3ccd106d8f701241';
+import { defineSecret } from 'firebase-functions/params';
+
+// Firebase Secret Manager parameter declaration
+export const bigisubTokenSecret = defineSecret('BIGISUB_TOKEN');
 
 export const getBigisubToken = (): string => {
-  return process.env.BIGISUB_TOKEN || FALLBACK_TOKEN;
+  // In Cloud Functions environment, access via defineSecret value() or process.env
+  try {
+    const val = bigisubTokenSecret.value();
+    if (val) return val;
+  } catch {
+    // Fall back to process.env if outside active Cloud Function lifecycle
+  }
+  return process.env.BIGISUB_TOKEN || '';
 };
 
 export const getBigisubBaseUrl = (): string => {
@@ -17,6 +25,7 @@ export const getBigisubBaseUrl = (): string => {
 
 /**
  * Sanitizes headers and payloads to prevent secret leakage in server logs.
+ * Never prints authorization headers or tokens.
  */
 export const sanitizeLog = (data: any): any => {
   if (!data) return data;
@@ -25,7 +34,13 @@ export const sanitizeLog = (data: any): any => {
   const sanitized = Array.isArray(data) ? [...data] : { ...data };
   for (const key of Object.keys(sanitized)) {
     const lowerKey = key.toLowerCase();
-    if (lowerKey.includes('token') || lowerKey.includes('authorization') || lowerKey.includes('secret') || lowerKey.includes('key')) {
+    if (
+      lowerKey.includes('token') ||
+      lowerKey.includes('authorization') ||
+      lowerKey.includes('secret') ||
+      lowerKey.includes('key') ||
+      lowerKey.includes('password')
+    ) {
       sanitized[key] = '[REDACTED]';
     } else if (typeof sanitized[key] === 'object') {
       sanitized[key] = sanitizeLog(sanitized[key]);

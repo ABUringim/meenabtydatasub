@@ -1176,4 +1176,6 @@ export const syncBigisubPlans = functions.https.onCall(async (_data, context) =>
   return { status: 'success', synced: defaultPlans.length };
 });
 
+export { healthCheckCron } from './admin/healthCheckCron';
+
 
