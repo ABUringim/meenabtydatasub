@@ -370,3 +370,38 @@ export interface NotificationCampaign {
   status: 'draft' | 'scheduled' | 'sent';
 }
 
+export interface UserNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'transaction' | 'wallet' | 'security' | 'promo' | 'system';
+  read: boolean;
+  link?: string;
+  createdAt: string;
+}
+
+export interface SystemHealthStats {
+  paystackWebhook: {
+    status: 'healthy' | 'degraded' | 'down';
+    latencyMs: number;
+    lastReceivedAt: string;
+    successRate: number;
+  };
+  bigiSubApi: {
+    status: 'healthy' | 'degraded' | 'maintenance' | 'down';
+    latencyMs: number;
+    uptimePercent: number;
+    lastPingAt: string;
+    balanceNgn?: number;
+  };
+  lastSuccessfulTransaction: {
+    reference: string;
+    service: string;
+    amount: number;
+    timestamp: string;
+  } | null;
+  overallStatus: 'operational' | 'degraded' | 'outage';
+  updatedAt: string;
+}
+

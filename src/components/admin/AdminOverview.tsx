@@ -8,6 +8,7 @@ import { storage } from '../../services/storage';
 import { formatKoboToNgn, formatWATDate, timeAgo } from '../../lib/formatters';
 import { StatusBadge } from '../shared/StatusBadge';
 import { RecomputeStatsModal } from './modals/RecomputeStatsModal';
+import { SystemHealthWidget } from './SystemHealthWidget';
 import {
   TrendingUp,
   DollarSign,
@@ -239,6 +240,9 @@ export const AdminOverview: React.FC<{ onNavigateTab: (tab: string) => void }> =
           </div>
         </div>
       </div>
+
+      {/* Real-time Telemetry & System Health Widget (admin_stats/health) */}
+      <SystemHealthWidget onNavigateTab={onNavigateTab} />
 
       {/* 10 Services Breakdown + Operations Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

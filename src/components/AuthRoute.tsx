@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../lib/auth';
 
 interface AuthRouteProps {
@@ -12,8 +12,8 @@ export const AuthRoute: React.FC<AuthRouteProps> = ({
 }) => {
   const { user, loading } = useAuth();
 
-  React.useEffect(() => {
-    if (!loading && user?.emailVerified) {
+  useEffect(() => {
+    if (!loading && user) {
       onRedirectToDashboard();
     }
   }, [loading, user, onRedirectToDashboard]);
@@ -29,7 +29,7 @@ export const AuthRoute: React.FC<AuthRouteProps> = ({
     );
   }
 
-  if (user?.emailVerified) {
+  if (user) {
     return null;
   }
 

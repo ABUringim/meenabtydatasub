@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WalletProvider, useWallet } from './context/WalletContext';
 import { Navbar } from './components/layout/Navbar';
@@ -53,11 +53,34 @@ function MainApp() {
 
   const [currentView, setCurrentView] = useState<string>(() => {
     if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path === '/dashboard' || path === '/customer-dashboard') return 'customer-dashboard';
+      if (path === '/login' || path === '/auth') return 'login';
+      if (path === '/register') return 'register';
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('verified') === '1') return 'login';
     }
     return 'landing';
   });
+
+  // Keep browser URL synchronized
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path === '/dashboard' || path === '/customer-dashboard') {
+        setCurrentView('customer-dashboard');
+      } else if (path === '/login' || path === '/auth') {
+        setCurrentView('login');
+      } else if (path === '/register') {
+        setCurrentView('register');
+      } else if (path === '/' || path === '') {
+        setCurrentView('landing');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [hasVerifiedNotice, setHasVerifiedNotice] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
@@ -74,6 +97,18 @@ function MainApp() {
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
+    if (typeof window !== 'undefined') {
+      const pathMap: Record<string, string> = {
+        'customer-dashboard': '/dashboard',
+        'login': '/login',
+        'register': '/register',
+        'landing': '/',
+      };
+      const newPath = pathMap[view];
+      if (newPath && window.location.pathname !== newPath) {
+        window.history.pushState({}, '', newPath);
+      }
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

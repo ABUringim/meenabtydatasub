@@ -37,65 +37,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync Firebase Auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       if (!fbUser) {
         setFirebaseUser(null);
-        setCurrentUser(null);
-        setLoading(false);
-        return;
-      }
-
-      // Check if user's email is verified
-      // Reload user to get freshest token and verification status from Firebase
-      try {
-        await fbUser.reload();
-      } catch {
-        // ignore transient reload errors
-      }
-
-      const freshUser = auth.currentUser;
-      if (!freshUser?.emailVerified) {
-        // Immediately sign out unverified users and block access
-        await signOut(auth).catch(() => {});
-        setFirebaseUser(null);
-        setCurrentUser(null);
-        setLoading(false);
-        return;
-      }
-
-      setFirebaseUser(freshUser);
-      setLoading(false);
-
-      if (freshUser.email) {
-        const allUsers = storage.getUsers();
-        let found = allUsers.find((u) => u.email.toLowerCase() === freshUser.email?.toLowerCase());
-        if (!found) {
-          found = {
-            uid: freshUser.uid,
-            email: freshUser.email,
-            phone: '08123456789',
-            name: freshUser.displayName || freshUser.email.split('@')[0].toUpperCase(),
-            tier: 1,
-            kyc_status: 'unverified',
-            role: 'customer',
-            wallet_balance: 500000,
-            ledger_balance: 500000,
-            hasPin: true,
-            twoFactorEnabled: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            suspended: false,
-          };
-          allUsers.push(found);
-          localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
-          storage.recomputeAdminStats();
-          storage.notifyAdmin();
-        }
-        storage.setCurrentUserId(found.uid);
-        setCurrentUser(found);
-      }
- else {
-        // When signed out of Firebase, check if an admin session is explicitly loaded
+        // Only keep admin session if explicitly loaded
         const currentUid = storage.getCurrentUserId();
         const found = currentUid ? storage.getUser(currentUid) : null;
         if (found && (found.role === 'admin' || found.role === 'owner')) {
@@ -105,6 +50,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setCurrentUser(null);
         }
+        setLoading(false);
+        return;
+      }
+
+      setFirebaseUser(fbUser);
+      setLoading(false);
+
+      if (fbUser.email) {
+        // Construct in-memory profile without saving to database or storage
+        const allUsers = storage.getUsers();
+        const existing = allUsers.find((u) => u.email.toLowerCase() === fbUser.email?.toLowerCase());
+        const profile: UserProfile = existing || {
+          uid: fbUser.uid,
+          email: fbUser.email,
+          phone: fbUser.phoneNumber || '08123456789',
+          name: fbUser.displayName || fbUser.email.split('@')[0].toUpperCase(),
+          tier: 1,
+          kyc_status: 'unverified',
+          role: 'customer',
+          wallet_balance: 500000,
+          ledger_balance: 500000,
+          hasPin: true,
+          twoFactorEnabled: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          suspended: false,
+        };
+        setCurrentUser(profile);
       }
     });
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInVerified, signUpWithVerification } from '../../lib/auth';
+import { signIn, signUp } from '../../lib/auth';
 import { useAuth } from '../../context/AuthContext';
 import { Mail, Lock, User, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 
@@ -8,7 +8,7 @@ interface AuthPagesProps {
   verifiedSuccessNotice?: boolean;
   onSuccess: () => void;
   onNavigateMode: (mode: 'login' | 'register' | 'forgot') => void;
-  onRequireVerification: (email: string, password?: string) => void;
+  onRequireVerification?: (email: string, password?: string) => void;
 }
 
 const GoogleIcon: React.FC = () => (
@@ -81,14 +81,16 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
     setError(null);
 
     try {
-      await signInVerified(email, password);
+      await signIn(email, password);
       onSuccess();
     } catch (err: any) {
       if (err?.code === 'auth/email-not-verified') {
-        onRequireVerification(err?.email || email, password);
+        if (onRequireVerification) {
+          onRequireVerification(err?.email || email, password);
+        }
         return;
       }
-      setError(err?.message || 'Email or password is incorrect. Please try again.');
+      setError(err?.message || 'Email or password is incorrect');
     } finally {
       setIsLoading(false);
     }
@@ -107,13 +109,12 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
     setError(null);
 
     try {
-      // 1. Creates account in Firebase Auth
-      // 2. Dispatches verification email
-      // 3. Immediately signs out (no auto-login)
-      const registeredEmail = await signUpWithVerification(email, password);
-      onRequireVerification(registeredEmail, password);
+      const registeredEmail = await signUp(email, password);
+      if (onRequireVerification) {
+        onRequireVerification(registeredEmail, password);
+      }
     } catch (err: any) {
-      setError(err?.message || 'An account with this email already exists. Please sign in instead.');
+      setError(err?.message || 'User already exists. Please sign in');
     } finally {
       setIsLoading(false);
     }

@@ -139,7 +139,7 @@ service cloud.firestore {
     // --- Admin Aggregated Stats (Admin Read Only, Server-Side Write Only) ---
     match /admin_stats/{docId} {
       allow read: if isStaffAdmin();
-      allow write: if false;
+      allow write: if isStaffAdmin() && docId == "health";
     }
     match /admin_stats/services/{service} {
       allow read: if isStaffAdmin();
@@ -154,6 +154,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- User Notifications Collection ---
+    match /notifications/{userId} {
+      allow read, write: if isResourceOwner(userId) || isStaffAdmin();
+      match /{item=**} {
+        allow read, write: if isResourceOwner(userId) || isStaffAdmin();
+      }
+    }
+
     // --- Admin Activity Audit Trail (Owner Read Only, Server-Side Write Only) ---
     match /admin_activity/{activityId} {
       allow read: if isPlatformOwner();
@@ -161,3 +169,4 @@ service cloud.firestore {
     }
   }
 }
+

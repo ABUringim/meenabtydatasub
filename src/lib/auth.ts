@@ -10,49 +10,42 @@ import {
 import { auth } from './firebase';
 
 /**
- * Maps raw Firebase Auth error codes to branded Meenabty Datasub messages.
- * Never exposes raw error codes or internal Firebase messages to users.
+ * Maps raw Firebase Auth error codes to exact user specifications:
+ * Sign Up errors:
+ * • auth/email-already-in-use
+ * → Show exactly: "User already exists. Please sign in"
+ * 
+ * Login errors:
+ * • auth/wrong-password
+ * • auth/user-not-found
+ * • auth/invalid-credential
+ * → Show exactly: "Email or password is incorrect"
+ * 
+ * All other errors:
+ * • "Something went wrong. Please try again."
  */
 export const mapAuthError = (errorCode?: string): string => {
   if (!errorCode) return 'Something went wrong. Please try again.';
 
   switch (errorCode) {
-    // Specific Sign-Up Error: exactly "User already exists. Please sign in"
     case 'auth/email-already-in-use':
       return 'User already exists. Please sign in';
 
-    // Specific Login Errors: exactly "Email or password is incorrect"
     case 'auth/wrong-password':
     case 'auth/user-not-found':
     case 'auth/invalid-credential':
       return 'Email or password is incorrect';
 
-    // All other errors: exactly "Something went wrong. Please try again."
     default:
       return 'Something went wrong. Please try again.';
   }
 };
 
-
 /**
- * Standard Sign In with Email and Password
+ * Sign In with Email and Password
+ * Blocks unverified users: signs them out immediately and throws auth/email-not-verified error.
  */
 export const signIn = async (email: string, password: string): Promise<FirebaseUser> => {
-  try {
-    const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-    return cred.user;
-  } catch (error: any) {
-    const code = error?.code || '';
-    throw new Error(mapAuthError(code));
-  }
-};
-
-/**
- * Sign In with strict email verification enforcement.
- * Immediately reloads the user to get fresh verification status from server.
- * If unverified, immediately signs out and throws an auth/email-not-verified error with email.
- */
-export const signInVerified = async (email: string, password: string): Promise<FirebaseUser> => {
   let cred;
   try {
     cred = await signInWithEmailAndPassword(auth, email.trim(), password);
@@ -61,12 +54,18 @@ export const signInVerified = async (email: string, password: string): Promise<F
     throw new Error(mapAuthError(code));
   }
 
-  // Fetch fresh verification status directly from Firebase server
-  await cred.user.reload().catch(() => {});
-  const freshUser = auth.currentUser;
+  // Reload user to get fresh verification status from Firebase server
+  try {
+    await cred.user.reload();
+  } catch {
+    // ignore transient reload errors
+  }
 
+  const freshUser = auth.currentUser;
   if (!freshUser?.emailVerified) {
-    await signOut(auth);
+    // If login succeeds BUT user.emailVerified === false:
+    // Immediately sign them out & block access to dashboard
+    await signOut(auth).catch(() => {});
     const targetEmail = cred.user.email || email.trim();
     const err: any = new Error(
       `We have sent you a verification email to ${targetEmail}. Please verify it and log in.`
@@ -80,39 +79,27 @@ export const signInVerified = async (email: string, password: string): Promise<F
 };
 
 /**
- * Standard Sign Up with Email and Password
- */
-export const signUp = async (email: string, password: string): Promise<FirebaseUser> => {
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-    return cred.user;
-  } catch (error: any) {
-    const code = error?.code || '';
-    throw new Error(mapAuthError(code));
-  }
-};
-
-/**
- * Sign Up with mandatory Email Verification (NO AUTO-LOGIN).
+ * Sign Up with Email and Password (No Auto Login)
  * 1. Creates account in Firebase Auth
- * 2. Immediately dispatches verification email with redirect to /auth?verified=1
- * 3. Immediately signs out so user is NOT logged in
+ * 2. Immediately sends a verification email
+ * 3. Immediately signs out
  * 4. Returns the user's email for the verification screen
  */
-export const signUpWithVerification = async (email: string, password: string): Promise<string> => {
+export const signUp = async (email: string, password: string): Promise<string> => {
   try {
     const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://meenabtydatasub.com';
 
     await sendEmailVerification(cred.user, {
-      url: `${origin}/auth?verified=1`,
+      url: `${origin}/login?verified=1`,
       handleCodeInApp: false,
     }).catch((e) => {
       console.warn('Verification dispatch warning:', e);
     });
 
-    // Force immediate sign-out: unverified users must never remain authenticated
+    // Immediately sign the user out (No Auto Login)
     await signOut(auth);
+
     return cred.user.email || email.trim();
   } catch (error: any) {
     const code = error?.code || '';
@@ -121,8 +108,7 @@ export const signUpWithVerification = async (email: string, password: string): P
 };
 
 /**
- * Resends the email verification link to the target user.
- * Supports sending for current user, or temporary authenticated session if user is signed out.
+ * Resends the verification email to the user
  */
 export const resendVerification = async (email?: string, password?: string): Promise<void> => {
   let targetUser = auth.currentUser;
@@ -133,11 +119,7 @@ export const resendVerification = async (email?: string, password?: string): Pro
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       targetUser = cred.user;
       signedInTemporarily = true;
-    } catch (err: any) {
-      const code = err?.code || '';
-      if (code === 'auth/too-many-requests') {
-        throw new Error('Please wait a minute before requesting another verification email.');
-      }
+    } catch {
       throw new Error('Please sign in first.');
     }
   }
@@ -149,11 +131,11 @@ export const resendVerification = async (email?: string, password?: string): Pro
   try {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://meenabtydatasub.com';
     await sendEmailVerification(targetUser, {
-      url: `${origin}/auth?verified=1`,
+      url: `${origin}/login?verified=1`,
       handleCodeInApp: false,
     });
-  } catch (error: any) {
-    const code = error?.code || '';
+  } catch (err: any) {
+    const code = err?.code || '';
     if (code === 'auth/too-many-requests') {
       throw new Error('Please wait a minute before requesting another verification email.');
     }
@@ -166,8 +148,7 @@ export const resendVerification = async (email?: string, password?: string): Pro
 };
 
 /**
- * Re-checks if the user's email has been verified.
- * Calls user.reload() to pull fresh verification flag from Firebase's server.
+ * Checks if the user's email has been verified
  */
 export const recheckVerification = async (email?: string, password?: string): Promise<boolean> => {
   if (auth.currentUser) {
@@ -175,20 +156,19 @@ export const recheckVerification = async (email?: string, password?: string): Pr
       await auth.currentUser.reload();
       return !!auth.currentUser.emailVerified;
     } catch {
-      throw new Error('Could not check verification status. Please refresh the page.');
+      return false;
     }
   }
 
-  // If user is currently signed out, authenticate briefly to check fresh status
   if (email && password) {
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       await cred.user.reload();
-      const isVerified = !!cred.user.emailVerified;
-      if (!isVerified) {
-        await signOut(auth);
+      const verified = !!cred.user.emailVerified;
+      if (!verified) {
+        await signOut(auth).catch(() => {});
       }
-      return isVerified;
+      return verified;
     } catch {
       return false;
     }
@@ -196,6 +176,16 @@ export const recheckVerification = async (email?: string, password?: string): Pr
 
   return false;
 };
+
+/**
+ * Compatibility alias for signInVerified
+ */
+export const signInVerified = signIn;
+
+/**
+ * Compatibility alias for signUpWithVerification
+ */
+export const signUpWithVerification = signUp;
 
 /**
  * Sign Out / Logout from Firebase Authentication
@@ -209,9 +199,8 @@ export const logOut = async (): Promise<void> => {
 };
 
 /**
- * React hook to listen for Firebase Auth state changes
- * Uses browserLocalPersistence and enforces user.reload() to fetch fresh emailVerified status.
- * Blocks unverified users automatically.
+ * React hook to listen for Firebase Auth state changes using onAuthStateChanged().
+ * Enforces verified-only session.
  */
 export const useAuth = () => {
   const [user, setUser] = useState<FirebaseUser | null>(auth.currentUser);
@@ -255,7 +244,6 @@ export const useAuth = () => {
   return { user, loading, error };
 };
 
-// Re-export Google Auth methods for seamless imports per prompt specs
 export {
   signInWithGoogle,
   handleGoogleRedirectResult,

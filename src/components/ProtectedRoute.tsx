@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../lib/auth';
+import { signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   onRedirectToAuth: () => void;
-  onRedirectToVerify?: (email?: string) => void;
+  onRedirectToVerify: (email?: string) => void;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -14,16 +16,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, loading } = useAuth();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!loading) {
       if (!user) {
+        // Not logged in -> show auth screen
         onRedirectToAuth();
       } else if (!user.emailVerified) {
-        if (onRedirectToVerify) {
-          onRedirectToVerify(user.email || undefined);
-        } else {
-          onRedirectToAuth();
-        }
+        // Logged in but unverified -> force logout and show verification screen
+        signOut(auth).catch(() => {});
+        onRedirectToVerify(user.email || undefined);
       }
     }
   }, [loading, user, onRedirectToAuth, onRedirectToVerify]);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { formatKoboToNgn } from '../../lib/formatters';
+import { NotificationBell } from '../shared/NotificationBell';
 import {
   Wallet,
   Menu,
@@ -76,6 +77,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-3">
           {user ? (
             <div className="flex items-center gap-2">
+              {/* Real-time Notification Bell */}
+              <NotificationBell onNavigate={onNavigate} />
+
               {/* Wallet pill */}
               <button
                 onClick={onOpenFundWallet}

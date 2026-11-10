@@ -21,6 +21,8 @@ import {
   AdminDailyStat,
   AdminPendingStat,
   AdminActivity,
+  UserNotification,
+  SystemHealthStats,
 } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_PROVIDERS } from '../data/initialData';
 
@@ -44,9 +46,12 @@ const STORAGE_KEYS = {
   SETTINGS: 'meenabty_settings_v2',
   BLOG_POSTS: 'meenabty_blog_posts_v2',
   NOTIFICATIONS: 'meenabty_notifications_v2',
+  USER_NOTIFICATIONS: 'meenabty_user_notifications_v2',
+  ADMIN_HEALTH: 'meenabty_admin_health_v2',
   CURRENT_USER_ID: 'meenabty_current_user_id',
   ADMIN_SESSION_TIMESTAMP: 'meenabty_admin_session_ts',
 };
+
 
 // Initial Owner user
 const DEFAULT_OWNER: UserProfile = {
@@ -178,6 +183,63 @@ const INITIAL_NOTIFICATIONS: NotificationCampaign[] = [
     status: 'sent',
   },
 ];
+
+const INITIAL_USER_NOTIFICATIONS: UserNotification[] = [
+  {
+    id: 'notif_welcome_01',
+    userId: DEFAULT_CUSTOMER.uid,
+    title: 'Welcome to Sayyada Datasub!',
+    message: 'Your account is fully activated. Enjoy instant automated data & VTU recharges.',
+    type: 'system',
+    read: true,
+    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
+  {
+    id: 'notif_fund_02',
+    userId: DEFAULT_CUSTOMER.uid,
+    title: 'Wallet Funded Successfully',
+    message: 'Your wallet has been credited with ₦15,000.00 via Paystack Direct Debit.',
+    type: 'wallet',
+    read: false,
+    link: 'customer-dashboard',
+    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+  },
+  {
+    id: 'notif_data_03',
+    userId: DEFAULT_CUSTOMER.uid,
+    title: 'MTN 2.5GB Data Delivered',
+    message: 'Successful data subscription for 08145239871. Ref: SAY_1731248921_DAT.',
+    type: 'transaction',
+    read: false,
+    link: 'customer-dashboard',
+    createdAt: new Date(Date.now() - 25 * 60000).toISOString(),
+  },
+];
+
+const INITIAL_SYSTEM_HEALTH: SystemHealthStats = {
+  paystackWebhook: {
+    status: 'healthy',
+    latencyMs: 142,
+    lastReceivedAt: new Date(Date.now() - 4 * 60000).toISOString(),
+    successRate: 99.8,
+  },
+  bigiSubApi: {
+    status: 'healthy',
+    latencyMs: 218,
+    uptimePercent: 99.95,
+    lastPingAt: new Date(Date.now() - 2 * 60000).toISOString(),
+    balanceNgn: 485250,
+  },
+  lastSuccessfulTransaction: {
+    reference: 'SAY_1731248921_AIR',
+    service: 'airtime',
+    amount: 100000,
+    timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
+  },
+  overallStatus: 'operational',
+  updatedAt: new Date().toISOString(),
+};
+
 
 const INITIAL_BENEFICIARIES: Beneficiary[] = [
   {
@@ -619,6 +681,12 @@ class StorageService {
     if (!localStorage.getItem(STORAGE_KEYS.SPENDING)) {
       this.setItem(STORAGE_KEYS.SPENDING, INITIAL_SPENDING);
     }
+    if (!localStorage.getItem(STORAGE_KEYS.USER_NOTIFICATIONS)) {
+      this.setItem(STORAGE_KEYS.USER_NOTIFICATIONS, INITIAL_USER_NOTIFICATIONS);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_HEALTH)) {
+      this.setItem(STORAGE_KEYS.ADMIN_HEALTH, INITIAL_SYSTEM_HEALTH);
+    }
   }
 
   // --- Users ---
@@ -787,6 +855,16 @@ class StorageService {
     };
     ledger.unshift(entry);
     this.setItem(STORAGE_KEYS.LEDGER, ledger);
+
+    // Push real-time notification
+    this.addNotificationForUser({
+      userId,
+      title: source === 'refund' ? 'Auto-Refund Credited' : 'Wallet Credited',
+      message: `₦${(amountKobo / 100).toLocaleString()} credited to your wallet balance (${description}).`,
+      type: 'wallet',
+      read: false,
+      link: 'customer-dashboard',
+    });
 
     return { balanceBefore, balanceAfter };
   }
@@ -1011,6 +1089,28 @@ class StorageService {
       if (matched) {
         this.updateBeneficiary(matched.id, { lastUsedAt: new Date().toISOString() });
       }
+
+      // 4. Push in-app user notification
+      this.addNotificationForUser({
+        userId: txn.user_id,
+        title: `${txn.service.toUpperCase()} Purchase Successful`,
+        message: `Your ${txn.provider} ${txn.service} transaction of ₦${(txn.amount / 100).toLocaleString()} (Ref: ${txn.reference}) was completed successfully.`,
+        type: 'transaction',
+        read: false,
+        link: 'customer-dashboard',
+      });
+
+      // 5. Update admin health widget telemetry with last successful transaction
+      this.recordSuccessfulTransactionHealth(txn.reference, txn.service, txn.amount);
+    } else if (txn.status === 'failed') {
+      this.addNotificationForUser({
+        userId: txn.user_id,
+        title: `${txn.service.toUpperCase()} Transaction Failed`,
+        message: `Your ${txn.provider} ${txn.service} transaction of ₦${(txn.amount / 100).toLocaleString()} could not be processed and was automatically refunded.`,
+        type: 'transaction',
+        read: false,
+        link: 'customer-dashboard',
+      });
     }
   }
 
@@ -1337,6 +1437,118 @@ class StorageService {
     this.recordAuditLog(actorId, `${actorName}@meenabtydatasub.com`, action, target, before, after, actorRole);
     this.notifyAdmin();
   }
+
+  // --- User Notifications (notifications/{uid}) ---
+  getUserNotifications(userId: string): UserNotification[] {
+    const all = this.getItem<UserNotification[]>(STORAGE_KEYS.USER_NOTIFICATIONS, INITIAL_USER_NOTIFICATIONS);
+    return all
+      .filter((n) => n.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  addNotificationForUser(notif: Omit<UserNotification, 'id' | 'createdAt'>): UserNotification {
+    const all = this.getItem<UserNotification[]>(STORAGE_KEYS.USER_NOTIFICATIONS, INITIAL_USER_NOTIFICATIONS);
+    const newNotif: UserNotification = {
+      ...notif,
+      id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      createdAt: new Date().toISOString(),
+    };
+    all.unshift(newNotif);
+    this.setItem(STORAGE_KEYS.USER_NOTIFICATIONS, all.slice(0, 300));
+    window.dispatchEvent(new CustomEvent('meenabty_notifications_sync', { detail: { userId: notif.userId } }));
+    return newNotif;
+  }
+
+  markNotificationAsRead(userId: string, id: string): void {
+    const all = this.getItem<UserNotification[]>(STORAGE_KEYS.USER_NOTIFICATIONS, INITIAL_USER_NOTIFICATIONS);
+    const updated = all.map((n) => (n.id === id && n.userId === userId ? { ...n, read: true } : n));
+    this.setItem(STORAGE_KEYS.USER_NOTIFICATIONS, updated);
+    window.dispatchEvent(new CustomEvent('meenabty_notifications_sync', { detail: { userId } }));
+  }
+
+  markAllNotificationsAsRead(userId: string): void {
+    const all = this.getItem<UserNotification[]>(STORAGE_KEYS.USER_NOTIFICATIONS, INITIAL_USER_NOTIFICATIONS);
+    const updated = all.map((n) => (n.userId === userId ? { ...n, read: true } : n));
+    this.setItem(STORAGE_KEYS.USER_NOTIFICATIONS, updated);
+    window.dispatchEvent(new CustomEvent('meenabty_notifications_sync', { detail: { userId } }));
+  }
+
+  clearAllNotifications(userId: string): void {
+    const all = this.getItem<UserNotification[]>(STORAGE_KEYS.USER_NOTIFICATIONS, INITIAL_USER_NOTIFICATIONS);
+    const updated = all.filter((n) => n.userId !== userId);
+    this.setItem(STORAGE_KEYS.USER_NOTIFICATIONS, updated);
+    window.dispatchEvent(new CustomEvent('meenabty_notifications_sync', { detail: { userId } }));
+  }
+
+  subscribeUserNotifications(userId: string, callback: (notifs: UserNotification[]) => void): () => void {
+    const handler = (e: any) => {
+      if (!e.detail || e.detail.userId === userId) {
+        callback(this.getUserNotifications(userId));
+      }
+    };
+    window.addEventListener('meenabty_notifications_sync', handler);
+    window.addEventListener('storage', handler);
+    // initial invoke
+    callback(this.getUserNotifications(userId));
+
+    return () => {
+      window.removeEventListener('meenabty_notifications_sync', handler);
+      window.removeEventListener('storage', handler);
+    };
+  }
+
+  // --- System Health Telemetry (admin_stats/health) ---
+  getSystemHealth(): SystemHealthStats {
+    return this.getItem<SystemHealthStats>(STORAGE_KEYS.ADMIN_HEALTH, INITIAL_SYSTEM_HEALTH);
+  }
+
+  updateSystemHealth(updates: Partial<SystemHealthStats>): SystemHealthStats {
+    const current = this.getSystemHealth();
+    const updated: SystemHealthStats = {
+      ...current,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    this.setItem(STORAGE_KEYS.ADMIN_HEALTH, updated);
+    window.dispatchEvent(new CustomEvent('meenabty_health_sync', { detail: updated }));
+    this.notifyAdmin();
+    return updated;
+  }
+
+  recordSuccessfulTransactionHealth(reference: string, service: string, amount: number): void {
+    const current = this.getSystemHealth();
+    const updated: SystemHealthStats = {
+      ...current,
+      lastSuccessfulTransaction: {
+        reference,
+        service,
+        amount,
+        timestamp: new Date().toISOString(),
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    this.setItem(STORAGE_KEYS.ADMIN_HEALTH, updated);
+    window.dispatchEvent(new CustomEvent('meenabty_health_sync', { detail: updated }));
+    this.notifyAdmin();
+  }
+
+  subscribeSystemHealth(callback: (health: SystemHealthStats) => void): () => void {
+    const handler = () => {
+      callback(this.getSystemHealth());
+    };
+    window.addEventListener('meenabty_health_sync', handler);
+    window.addEventListener('meenabty_admin_sync', handler);
+    window.addEventListener('storage', handler);
+    // initial invoke
+    callback(this.getSystemHealth());
+
+    return () => {
+      window.removeEventListener('meenabty_health_sync', handler);
+      window.removeEventListener('meenabty_admin_sync', handler);
+      window.removeEventListener('storage', handler);
+    };
+  }
 }
 
 export const storage = new StorageService();
+

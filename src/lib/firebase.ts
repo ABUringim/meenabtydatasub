@@ -1,14 +1,13 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import firebaseAppletConfig from '../../firebase-applet-config.json';
 
-const firebaseConfig = {
-  apiKey: firebaseAppletConfig.apiKey || import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: firebaseAppletConfig.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: firebaseAppletConfig.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: firebaseAppletConfig.storageBucket || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: firebaseAppletConfig.messagingSenderId || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: firebaseAppletConfig.appId || import.meta.env.VITE_FIREBASE_APP_ID,
+export const firebaseConfig = {
+  apiKey: "AIzaSyCcnTFs6iv2W-9-GlguKbejwcx17mYiE9A",
+  authDomain: "meenabtydatasub.firebaseapp.com",
+  projectId: "meenabtydatasub",
+  storageBucket: "meenabtydatasub.firebasestorage.app",
+  messagingSenderId: "633559064274",
+  appId: "1:633559064274:web:5df916b4174e3264e9970b"
 };
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);

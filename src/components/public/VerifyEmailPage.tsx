@@ -77,8 +77,8 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({
             <Mail className="w-6 h-6 text-emerald-700" />
           </div>
           <h2 className="text-xl font-bold text-slate-900">Email Verification Required</h2>
-          <p className="text-xs text-slate-600 leading-relaxed font-medium">
-            We have sent you a verification email to <span className="text-slate-900 font-semibold">{email}</span>. Please verify it and log in.
+          <p className="text-sm text-slate-700 leading-relaxed">
+            We have sent you a verification email to <span className="font-semibold text-slate-950">{email}</span>. Please verify it and log in.
           </p>
         </div>
 
