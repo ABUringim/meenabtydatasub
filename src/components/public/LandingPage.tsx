@@ -444,6 +444,96 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
+      {/* Latest from Telecom & Fintech Blog (Live CMS preview) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold mb-2 border border-emerald-200">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Official Blog &amp; Guides</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+              Latest from Telecom &amp; Fintech Insights
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Real-time educational guides, tariff explanations, and meter troubleshooting published by operations
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigate('blog')}
+            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 shrink-0"
+          >
+            <span>View All Guides</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div
+            onClick={() => onNavigate('blog')}
+            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                Telecom &amp; Data
+              </span>
+              <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors mt-2 leading-snug">
+                How to Save up to 40% on MTN, Airtel &amp; Glo SME Data in Nigeria
+              </h3>
+              <p className="text-xs text-slate-600 mt-1.5 line-clamp-2">
+                Understanding technical differences between SME Data and direct retail rack rates.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-emerald-800">
+              <span>Read Guide</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </div>
+
+          <div
+            onClick={() => onNavigate('blog')}
+            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div>
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                Electricity Bills
+              </span>
+              <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors mt-2 leading-snug">
+                Prepaid Meter Tokens: Solving Common Keypad Error Codes
+              </h3>
+              <p className="text-xs text-slate-600 mt-1.5 line-clamp-2">
+                A guide for homeowners and tenants dealing with IKEDC, KEDCO, and AEDC prepaid meters.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-emerald-800">
+              <span>Read Guide</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </div>
+
+          <div
+            onClick={() => onNavigate('blog')}
+            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div>
+              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                Education &amp; Exams
+              </span>
+              <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors mt-2 leading-snug">
+                The Complete 2026 Guide to WAEC, NECO &amp; JAMB UTME e-PIN Vending
+              </h3>
+              <p className="text-xs text-slate-600 mt-1.5 line-clamp-2">
+                Everything you need to know about purchasing and verifying official WAEC result checker PINs.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-emerald-800">
+              <span>Read Guide</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ Accordion */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">

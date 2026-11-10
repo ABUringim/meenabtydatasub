@@ -88,6 +88,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           allUsers.push(found);
           localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
+          storage.recomputeAdminStats();
+          storage.notifyAdmin();
         }
         storage.setCurrentUserId(found.uid);
         setCurrentUser(found);

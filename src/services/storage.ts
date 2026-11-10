@@ -638,6 +638,8 @@ class StorageService {
     const updated = { ...users[idx], ...updates, updated_at: new Date().toISOString() };
     users[idx] = updated;
     this.setItem(STORAGE_KEYS.USERS, users);
+    this.recomputeAdminStats();
+    this.notifyAdmin();
     return updated;
   }
 
@@ -685,6 +687,8 @@ class StorageService {
     }
     txns.unshift(txn);
     this.setItem(STORAGE_KEYS.TRANSACTIONS, txns);
+    this.recomputeAdminStats();
+    this.notifyAdmin();
   }
 
   updateTransaction(id: string, updates: Partial<Transaction>): Transaction {
@@ -694,6 +698,8 @@ class StorageService {
     const updated = { ...txns[idx], ...updates };
     txns[idx] = updated;
     this.setItem(STORAGE_KEYS.TRANSACTIONS, txns);
+    this.recomputeAdminStats();
+    this.notifyAdmin();
     return updated;
   }
 

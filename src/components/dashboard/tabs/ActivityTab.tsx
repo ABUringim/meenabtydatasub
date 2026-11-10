@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useActivity, ActivityFilterGroup } from '../../../hooks/useActivity';
 import { formatKoboToNgn, timeAgo, formatWATDate } from '../../../lib/formatters';
 import { EmptyState } from '../EmptyState';
+import { ActivityFilterModal, ActivityFilterOptions } from '../modals/ActivityFilterModal';
 import {
   Smartphone,
   Wifi,
@@ -20,6 +21,8 @@ import {
   Clock,
   ShieldAlert,
   Layers,
+  Filter,
+  RotateCcw,
 } from 'lucide-react';
 
 export const getActivityIcon = (type: string) => {
@@ -58,7 +61,13 @@ export const getActivityIcon = (type: string) => {
 };
 
 export const ActivityTab: React.FC = () => {
-  const { activities, filterGroup, setFilterGroup } = useActivity();
+  const { activities, allActivities, filterGroup, setFilterGroup } = useActivity();
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [customFilter, setCustomFilter] = useState<ActivityFilterOptions>({
+    selectedTypes: [],
+    startDate: '',
+    endDate: '',
+  });
 
   const filterButtons: Array<{ id: ActivityFilterGroup; label: string }> = [
     { id: 'all', label: 'All Activity' },
@@ -67,17 +76,46 @@ export const ActivityTab: React.FC = () => {
     { id: 'account', label: 'Account & Security' },
   ];
 
+  const hasCustomFilter =
+    customFilter.selectedTypes.length > 0 || Boolean(customFilter.startDate) || Boolean(customFilter.endDate);
+
+  const displayedActivities = useMemo(() => {
+    let list = activities;
+    if (hasCustomFilter) {
+      list = allActivities.filter((item) => {
+        if (customFilter.selectedTypes.length > 0 && !customFilter.selectedTypes.includes(item.type)) {
+          return false;
+        }
+        if (customFilter.startDate) {
+          const itemTime = new Date(item.created_at).getTime();
+          const startTime = new Date(customFilter.startDate).getTime();
+          if (itemTime < startTime) return false;
+        }
+        if (customFilter.endDate) {
+          const itemTime = new Date(item.created_at).getTime();
+          const endTime = new Date(customFilter.endDate).setHours(23, 59, 59, 999);
+          if (itemTime > endTime) return false;
+        }
+        return true;
+      });
+    }
+    return list;
+  }, [activities, allActivities, customFilter, hasCustomFilter]);
+
   return (
     <div className="space-y-4">
-      {/* Category Pills */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-2 overflow-x-auto">
-        <div className="flex items-center gap-1.5">
+      {/* Category Pills & Filter Button */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto">
           {filterButtons.map((btn) => (
             <button
               key={btn.id}
-              onClick={() => setFilterGroup(btn.id)}
-              className={`py-1.5 px-3.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                filterGroup === btn.id
+              onClick={() => {
+                setFilterGroup(btn.id);
+                setCustomFilter({ selectedTypes: [], startDate: '', endDate: '' });
+              }}
+              className={`py-1.5 px-3.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                filterGroup === btn.id && !hasCustomFilter
                   ? 'bg-emerald-700 text-white shadow-xs'
                   : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
               }`}
@@ -86,22 +124,54 @@ export const ActivityTab: React.FC = () => {
             </button>
           ))}
         </div>
-        <span className="text-[11px] text-slate-400 shrink-0 hidden sm:inline">
-          {activities.length} recorded events
-        </span>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setIsFilterModalOpen(true)}
+            className={`py-1.5 px-3 text-xs font-semibold rounded-xl border transition-colors flex items-center gap-1.5 cursor-pointer ${
+              hasCustomFilter
+                ? 'border-emerald-600 bg-emerald-50 text-emerald-950 font-bold'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <Filter className={`w-3.5 h-3.5 ${hasCustomFilter ? 'text-emerald-700' : 'text-slate-500'}`} />
+            <span>Filter</span>
+            {hasCustomFilter && <span className="w-2 h-2 rounded-full bg-emerald-600" />}
+          </button>
+
+          {hasCustomFilter && (
+            <button
+              onClick={() => setCustomFilter({ selectedTypes: [], startDate: '', endDate: '' })}
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              title="Reset custom filter"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          <span className="text-[11px] text-slate-400 hidden sm:inline">
+            {displayedActivities.length} recorded events
+          </span>
+        </div>
       </div>
 
       {/* Chronological Activity Feed */}
-      {activities.length === 0 ? (
+      {displayedActivities.length === 0 ? (
         <EmptyState
           icon={Layers}
-          title="No activity recorded"
-          description="Your timeline feed will display all recharges, wallet top-ups, beneficiaries, and security logins."
+          title={hasCustomFilter ? 'No matching activity' : 'No activity recorded'}
+          description={
+            hasCustomFilter
+              ? 'No activity records match your active type or date filters. Try resetting the filters.'
+              : 'Your timeline feed will display all recharges, wallet top-ups, beneficiaries, and security logins.'
+          }
+          actionLabel={hasCustomFilter ? 'Reset Filters' : undefined}
+          onAction={() => setCustomFilter({ selectedTypes: [], startDate: '', endDate: '' })}
         />
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
           <div className="relative pl-6 sm:pl-8 space-y-6 before:content-[''] before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
-            {activities.map((item) => {
+            {displayedActivities.map((item) => {
               const { icon: Icon, color } = getActivityIcon(item.type);
               return (
                 <div key={item.id} className="relative flex items-start justify-between gap-3 group">
@@ -153,6 +223,15 @@ export const ActivityTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Activity Filter Modal */}
+      <ActivityFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        options={customFilter}
+        onApply={(opts) => setCustomFilter(opts)}
+        onReset={() => setCustomFilter({ selectedTypes: [], startDate: '', endDate: '' })}
+      />
     </div>
   );
 };

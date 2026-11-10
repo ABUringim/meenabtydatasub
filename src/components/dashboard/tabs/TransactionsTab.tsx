@@ -6,6 +6,7 @@ import { EmptyState } from '../EmptyState';
 import { FilterModal, FilterCriteria } from '../modals/FilterModal';
 import { ReceiptViewModal } from '../modals/ReceiptViewModal';
 import { ReportIssueModal } from '../modals/ReportIssueModal';
+import { RepeatPurchaseModal } from '../modals/RepeatPurchaseModal';
 import { formatWATDate } from '../../../lib/formatters';
 import {
   Search,
@@ -32,6 +33,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ onRepeatServic
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [activeReceiptTxn, setActiveReceiptTxn] = useState<Transaction | null>(null);
   const [activeDisputeTxn, setActiveDisputeTxn] = useState<Transaction | null>(null);
+  const [activeRepeatTxn, setActiveRepeatTxn] = useState<Transaction | null>(null);
 
   // Filter logic
   const filtered = useMemo(() => {
@@ -127,7 +129,11 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ onRepeatServic
     document.body.removeChild(link);
   };
 
-  const handleRepeat = (txn: Transaction) => {
+  const handleRepeatClick = (txn: Transaction) => {
+    setActiveRepeatTxn(txn);
+  };
+
+  const handleConfirmRepeat = (txn: Transaction) => {
     const serviceTabMap: Record<string, string> = {
       airtime: 'service-airtime',
       data: 'service-data',
@@ -243,7 +249,7 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ onRepeatServic
               key={t.id}
               transaction={t}
               onViewReceipt={(txn) => setActiveReceiptTxn(txn)}
-              onRepeat={handleRepeat}
+              onRepeat={handleRepeatClick}
               onReportIssue={(txn) => setActiveDisputeTxn(txn)}
             />
           ))}
@@ -273,6 +279,14 @@ export const TransactionsTab: React.FC<TransactionsTabProps> = ({ onRepeatServic
         isOpen={Boolean(activeDisputeTxn)}
         transaction={activeDisputeTxn}
         onClose={() => setActiveDisputeTxn(null)}
+      />
+
+      {/* Repeat Purchase Confirmation Modal */}
+      <RepeatPurchaseModal
+        isOpen={Boolean(activeRepeatTxn)}
+        transaction={activeRepeatTxn}
+        onClose={() => setActiveRepeatTxn(null)}
+        onConfirm={handleConfirmRepeat}
       />
     </div>
   );
