@@ -5,8 +5,6 @@ import {
   sendEmailVerification,
   signOut,
   onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
   User as FirebaseUser,
 } from 'firebase/auth';
 import { auth } from './firebase';
@@ -65,47 +63,6 @@ export const mapAuthError = (errorCode?: string): string => {
   }
 };
 
-/**
- * Sign In with Google via Firebase Authentication
- * Connects directly to Firebase Auth using GoogleAuthProvider with popup flow.
- * Google accounts are pre-verified, so users are immediately logged in.
- */
-export const signInWithGoogle = async (): Promise<FirebaseUser> => {
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({
-    prompt: 'select_account',
-  });
-
-  try {
-    const cred = await signInWithPopup(auth, provider);
-    return cred.user;
-  } catch (error: any) {
-    const code = error?.code || '';
-    console.warn('Firebase Google Sign-In status:', code, error?.message);
-
-    // Fallback if testing with unconfigured dummy API key in development
-    if (
-      code === 'auth/invalid-api-key' ||
-      code === 'auth/api-key-not-valid' ||
-      code === 'auth/internal-error' ||
-      error.message?.includes('API key') ||
-      error.message?.includes('dummy')
-    ) {
-      const fallbackUser: any = {
-        uid: 'usr_google_ringim_97',
-        email: 'aburingim1997@gmail.com',
-        displayName: 'Abubakar Ringim',
-        emailVerified: true,
-        photoURL: null,
-        providerData: [{ providerId: 'google.com', email: 'aburingim1997@gmail.com' }],
-        reload: async () => {},
-      };
-      return fallbackUser as FirebaseUser;
-    }
-
-    throw new Error(mapAuthError(code));
-  }
-};
 
 /**
  * Standard Sign In with Email and Password

@@ -53,6 +53,7 @@ export interface Transaction {
   provider: string; // e.g., 'MTN', 'DSTV', 'IKEDC', 'WAEC', 'VTPass'
   reference: string; // unique idempotency key
   paystack_ref?: string;
+  provider_tran_id?: string;
   payment_method?: string;
   amount: number; // in kobo
   cost: number; // in kobo
