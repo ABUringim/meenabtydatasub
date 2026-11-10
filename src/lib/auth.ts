@@ -17,47 +17,17 @@ export const mapAuthError = (errorCode?: string): string => {
   if (!errorCode) return 'Something went wrong. Please try again.';
 
   switch (errorCode) {
-    // Google & Popup Authentication Errors
-    case 'auth/popup-closed-by-user':
-      return 'Google sign-in was closed before completing. Please try again.';
-    case 'auth/popup-blocked':
-      return 'Sign-in popup was blocked by your browser. Please allow popups for this site.';
-    case 'auth/cancelled-popup-request':
-      return 'Sign-in request was cancelled. Please try again.';
-    case 'auth/account-exists-with-different-credential':
-      return 'An account already exists with this email address using another sign-in method.';
-    case 'auth/unauthorized-domain':
-      return 'This domain is not authorized in Firebase Auth. Add it to Authorized Domains in Firebase Console.';
-    case 'auth/operation-not-allowed':
-      return 'Google sign-in is not enabled in Firebase Authentication. Please enable Google provider in the Firebase Console.';
+    // Specific Sign-Up Error: exactly "User already exists. Please sign in"
+    case 'auth/email-already-in-use':
+      return 'User already exists. Please sign in';
 
-    // Sign-In Errors (Enumeration-protected)
+    // Specific Login Errors: exactly "Email or password is incorrect"
     case 'auth/wrong-password':
     case 'auth/user-not-found':
     case 'auth/invalid-credential':
-      return 'Email or password is incorrect. Please try again.';
-    case 'auth/invalid-email':
-      return 'Please enter a valid email address.';
-    case 'auth/user-disabled':
-      return 'This account has been disabled. Please contact support.';
-    case 'auth/too-many-requests':
-      return 'Too many attempts. Please wait a moment and try again.';
+      return 'Email or password is incorrect';
 
-    // Sign-Up Errors
-    case 'auth/email-already-in-use':
-      return 'An account with this email already exists. Please sign in instead.';
-    case 'auth/weak-password':
-      return 'Password must be at least 6 characters long.';
-
-    // Resend / Verification Errors
-    case 'auth/email-not-verified':
-      return 'Your email address is not yet verified. Please verify it and log in.';
-    case 'auth/resend-too-many-requests':
-      return 'Please wait a minute before requesting another verification email.';
-    case 'auth/no-current-user':
-      return 'Please sign in first.';
-
-    // Safe Fallback
+    // All other errors: exactly "Something went wrong. Please try again."
     default:
       return 'Something went wrong. Please try again.';
   }
@@ -97,11 +67,12 @@ export const signInVerified = async (email: string, password: string): Promise<F
 
   if (!freshUser?.emailVerified) {
     await signOut(auth);
+    const targetEmail = cred.user.email || email.trim();
     const err: any = new Error(
-      `We have sent you a verification email to ${cred.user.email || email}. Please verify it and log in.`
+      `We have sent you a verification email to ${targetEmail}. Please verify it and log in.`
     );
     err.code = 'auth/email-not-verified';
-    err.email = cred.user.email || email;
+    err.email = targetEmail;
     throw err;
   }
 

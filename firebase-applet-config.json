@@ -1,12 +1,12 @@
 {
-  "projectId": "amazing-terminal-667m6",
-  "appId": "1:600412695760:web:1ae38bff6f13b40c8742d5",
-  "apiKey": "AIzaSyBsZyWaVZgSw1FbHoK2Iis2ZXp9MWXaQLg",
-  "authDomain": "amazing-terminal-667m6.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-meenabtydatasub-6fda3867-4df3-4d72-af84-6c76fa09f589",
-  "storageBucket": "amazing-terminal-667m6.firebasestorage.app",
-  "messagingSenderId": "600412695760",
+  "projectId": "thunder-star-digital-academy",
+  "appId": "1:631385339885:web:e45ca3da37217e334359e4",
+  "apiKey": "AIzaSyC_BWoDPqNvT5gnc_4cfSfUvlRKC3PQ2_I",
+  "authDomain": "thunder-star-digital-academy.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-sayyadadatasub-f40b0396-4b2e-444f-bcc1-e2c2b5c8c939",
+  "storageBucket": "thunder-star-digital-academy.firebasestorage.app",
+  "messagingSenderId": "631385339885",
   "measurementId": "",
-  "oAuthClientId": "600412695760-v9qepto1rdgrpo3ufjd2u7c1u991kme9.apps.googleusercontent.com",
+  "oAuthClientId": "631385339885-2vm1mqfrd9ge1u04bs8vthefjvr84ueb.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

@@ -37,19 +37,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync Firebase Auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-      setFirebaseUser(fbUser);
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (!fbUser) {
+        setFirebaseUser(null);
+        setCurrentUser(null);
+        setLoading(false);
+        return;
+      }
+
+      // Check if user's email is verified
+      // Reload user to get freshest token and verification status from Firebase
+      try {
+        await fbUser.reload();
+      } catch {
+        // ignore transient reload errors
+      }
+
+      const freshUser = auth.currentUser;
+      if (!freshUser?.emailVerified) {
+        // Immediately sign out unverified users and block access
+        await signOut(auth).catch(() => {});
+        setFirebaseUser(null);
+        setCurrentUser(null);
+        setLoading(false);
+        return;
+      }
+
+      setFirebaseUser(freshUser);
       setLoading(false);
 
-      if (fbUser?.email) {
+      if (freshUser.email) {
         const allUsers = storage.getUsers();
-        let found = allUsers.find((u) => u.email.toLowerCase() === fbUser.email?.toLowerCase());
+        let found = allUsers.find((u) => u.email.toLowerCase() === freshUser.email?.toLowerCase());
         if (!found) {
           found = {
-            uid: fbUser.uid,
-            email: fbUser.email,
+            uid: freshUser.uid,
+            email: freshUser.email,
             phone: '08123456789',
-            name: fbUser.displayName || fbUser.email.split('@')[0].toUpperCase(),
+            name: freshUser.displayName || freshUser.email.split('@')[0].toUpperCase(),
             tier: 1,
             kyc_status: 'unverified',
             role: 'customer',
@@ -66,7 +91,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         storage.setCurrentUserId(found.uid);
         setCurrentUser(found);
-      } else {
+      }
+ else {
         // When signed out of Firebase, check if an admin session is explicitly loaded
         const currentUid = storage.getCurrentUserId();
         const found = currentUid ? storage.getUser(currentUid) : null;

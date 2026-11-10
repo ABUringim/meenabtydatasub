@@ -76,10 +76,9 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center mx-auto mb-3">
             <Mail className="w-6 h-6 text-emerald-700" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Verify Your Email</h2>
-          <p className="text-xs text-slate-600 leading-relaxed">
-            We have sent a verification email to <strong className="text-slate-900 font-semibold">{email}</strong>.
-            Please verify it and log in.
+          <h2 className="text-xl font-bold text-slate-900">Email Verification Required</h2>
+          <p className="text-xs text-slate-600 leading-relaxed font-medium">
+            We have sent you a verification email to <span className="text-slate-900 font-semibold">{email}</span>. Please verify it and log in.
           </p>
         </div>
 
@@ -109,15 +108,25 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({
         </div>
 
         <div className="space-y-3 pt-2">
-          {/* "I've verified my email" critical recheck button */}
+          {/* Prominent Login button specified in prompt: "A Login button that takes the user to the login screen" */}
+          <button
+            type="button"
+            onClick={onNavigateToLogin}
+            className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+          >
+            <span>Login</span>
+            <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
+          </button>
+
+          {/* "I've verified my email" check button */}
           <button
             type="button"
             disabled={isChecking}
             onClick={handleCheckVerification}
-            className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:cursor-not-allowed"
+            className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:cursor-not-allowed"
           >
             <CheckCircle2 className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
-            <span>{isChecking ? 'Checking Verification Status...' : "I've verified my email"}</span>
+            <span>{isChecking ? 'Checking Verification Status...' : "I've verified my email (Check Status)"}</span>
           </button>
 
           {/* "Resend verification email" button throttled to 60s */}
@@ -125,7 +134,7 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({
             type="button"
             disabled={resendCooldown > 0 || isResending}
             onClick={handleResend}
-            className="w-full py-2.5 px-4 bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 text-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+            className="w-full py-2 px-4 bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 text-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
           >
             {isResending ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -148,10 +157,10 @@ export const VerifyEmailPage: React.FC<VerifyEmailPageProps> = ({
           <button
             type="button"
             onClick={onNavigateToLogin}
-            className="text-xs font-semibold text-slate-600 hover:text-emerald-700 flex items-center justify-center gap-1 mx-auto"
+            className="text-xs font-semibold text-slate-600 hover:text-emerald-700 inline-flex items-center gap-1 cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Login</span>
+            <span>Back to Login Screen</span>
           </button>
         </div>
       </div>
