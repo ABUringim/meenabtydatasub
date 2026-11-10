@@ -3,6 +3,7 @@ import { useWallet } from '../../../context/WalletContext';
 import { NetworkProvider, ProductItem } from '../../../types';
 import { detectNetwork, formatKoboToNgn, generateReference, isValidNigerianPhone } from '../../../lib/formatters';
 import { PinConfirmModal } from '../../shared/PinConfirmModal';
+import { DataPricePredictorWidget } from './DataPricePredictorWidget';
 import { Wifi, Zap, AlertCircle } from 'lucide-react';
 
 export const DataService: React.FC = () => {
@@ -103,6 +104,12 @@ export const DataService: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* AI-Powered Price Predictor & Volatility Radar Widget */}
+      <DataPricePredictorWidget
+        network={network}
+        selectedPlan={selectedPlan}
+      />
+
       <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-3 pb-4 mb-4 border-b border-slate-100">
           <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-700">
