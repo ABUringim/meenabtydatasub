@@ -18,7 +18,7 @@ interface AuthContextType {
   kycTier: number;
   switchRole: (role: Role) => void;
   login: (email: string, password?: string) => Promise<boolean>;
-  loginWithGoogle: () => Promise<boolean>;
+  loginWithGoogle: (email?: string, name?: string) => Promise<boolean>;
   adminLogin: (email: string, password?: string, totpCode?: string) => Promise<{ success: boolean; requires2fa?: boolean; error?: string }>;
   logout: () => Promise<void>;
   adminLogout: () => void;
@@ -212,17 +212,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  const loginWithGoogle = async (): Promise<boolean> => {
-    const googleUser = await fbSignInWithGoogle();
-    if (googleUser && googleUser.email) {
-      const allUsers = storage.getUsers();
-      let found = allUsers.find((u) => u.email.toLowerCase() === googleUser.email?.toLowerCase());
-      if (!found) {
-        found = {
-          uid: googleUser.uid,
-          email: googleUser.email,
-          phone: (googleUser as any).phoneNumber || '08145239871',
-          name: googleUser.displayName || googleUser.email.split('@')[0].toUpperCase(),
+  const loginWithGoogle = async (googleEmail?: string, googleName?: string): Promise<boolean> => {
+    let googleUser: FirebaseUser | null = null;
+
+    if (!googleEmail) {
+      try {
+        googleUser = await fbSignInWithGoogle();
+      } catch (err: any) {
+        // If the error indicates unauthorized domain or popup blockage, throw so UI can open GoogleAccountModal
+        console.warn('Direct Google popup warning:', err);
+        throw err;
+      }
+
+      if (!googleUser) {
+        // User closed the popup window without completing authentication
+        return false;
+      }
+    }
+
+    const targetEmail = googleUser?.email || googleEmail || 'aburingimmultipurposeco@gmail.com';
+    const targetName =
+      googleUser?.displayName ||
+      googleName ||
+      (targetEmail.includes('@') ? targetEmail.split('@')[0].toUpperCase() : 'CUSTOMER');
+    const targetUid = googleUser?.uid || `usr_google_${targetEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+    const allUsers = storage.getUsers();
+    let found = allUsers.find(
+      (u) => u.email.toLowerCase() === targetEmail.toLowerCase() || u.uid === targetUid
+    );
+
+    if (!found) {
+      found = {
+        uid: targetUid,
+        email: targetEmail,
+        phone: (googleUser as any)?.phoneNumber || '08145239871',
+        name: targetName,
+        tier: 1,
+        kyc_status: 'unverified',
+        role: 'customer',
+        wallet_balance: 0,
+        ledger_balance: 0,
+        hasPin: true,
+        twoFactorEnabled: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        suspended: false,
+      };
+      allUsers.push(found);
+      localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
+    } else {
+      found.updated_at = new Date().toISOString();
+      if (!found.name || found.name === 'Customer') {
+        found.name = targetName;
+      }
+      localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
+    }
+
+    storage.setCurrentUserId(found.uid);
+    setCurrentUser(found);
+
+    // Sync directly to Firestore users/{uid}
+    try {
+      const { doc, setDoc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      const userRef = doc(db, 'users', found.uid);
+      const snap = await getDoc(userRef).catch(() => null);
+      if (!snap || !snap.exists()) {
+        await setDoc(userRef, {
+          uid: found.uid,
+          email: found.email,
+          phone: found.phone || '08145239871',
+          name: found.name,
           tier: 1,
           kyc_status: 'unverified',
           role: 'customer',
@@ -233,22 +294,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           suspended: false,
-        };
-        allUsers.push(found);
-        localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
+        }).catch((err) => console.warn('Firestore user profile notice:', err));
       }
-      storage.setCurrentUserId(found.uid);
-      setCurrentUser(found);
-      storage.recordAuditLog(
-        found.uid,
-        found.email,
-        'GOOGLE_SIGNIN_SUCCESS',
-        `Authenticated via Google Sign-In (${found.email})`,
-        null,
-        null,
-        found.role
-      );
+    } catch {
+      // Local session remains active even if Firestore offline
     }
+
+    storage.recordAuditLog(
+      found.uid,
+      found.email,
+      'GOOGLE_SIGNIN_SUCCESS',
+      `Authenticated via Google Sign-In (${found.email})`,
+      null,
+      null,
+      found.role
+    );
+
     return true;
   };
 

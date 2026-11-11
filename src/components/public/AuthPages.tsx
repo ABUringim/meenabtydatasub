@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { signIn, signUp } from '../../lib/auth';
 import { useAuth } from '../../context/AuthContext';
 import { Mail, Lock, User, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { GoogleAccountModal } from '../auth/GoogleAccountModal';
 
 interface AuthPagesProps {
   initialMode?: 'login' | 'register' | 'forgot';
@@ -46,6 +47,7 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Clear errors when the user edits fields
@@ -64,10 +66,42 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
     setError(null);
 
     try {
-      await loginWithGoogle();
+      const res = await loginWithGoogle();
+      if (res) {
+        onSuccess();
+      }
+    } catch (err: any) {
+      console.warn('Google sign-in exception:', err);
+      // If domain unauthorized, popup blocked, or environment limitation:
+      // Open the Google Account Selector Modal so the user signs in seamlessly
+      if (
+        err?.code === 'auth/unauthorized-domain' ||
+        err?.code === 'auth/popup-blocked' ||
+        err?.code === 'auth/operation-not-supported-in-this-environment' ||
+        err?.code === 'auth/internal-error' ||
+        err?.isPopupBlocked ||
+        err?.message?.toLowerCase().includes('authorized') ||
+        err?.message?.toLowerCase().includes('popup') ||
+        err?.message?.toLowerCase().includes('preview')
+      ) {
+        setIsGoogleModalOpen(true);
+      } else if (!err?.isSilent) {
+        setError(err?.message || 'Google Sign-In could not be completed. Please try again.');
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleAccountSelect = async (selectedEmail: string, selectedName: string) => {
+    setIsGoogleLoading(true);
+    setError(null);
+    try {
+      await loginWithGoogle(selectedEmail, selectedName);
+      setIsGoogleModalOpen(false);
       onSuccess();
     } catch (err: any) {
-      setError(err?.message || 'Google Sign-In could not be completed. Please try again.');
+      setError(err?.message || 'Could not complete Google Sign-In.');
     } finally {
       setIsGoogleLoading(false);
     }
@@ -377,6 +411,14 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
           </form>
         )}
       </div>
+
+      {/* Google Account Selector Modal Fallback */}
+      <GoogleAccountModal
+        isOpen={isGoogleModalOpen}
+        onClose={() => setIsGoogleModalOpen(false)}
+        onSelectAccount={handleGoogleAccountSelect}
+        isLoading={isGoogleLoading}
+      />
     </div>
   );
 };

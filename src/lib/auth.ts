@@ -237,7 +237,17 @@ export const useAuth = () => {
         }
 
         const freshUser = auth.currentUser;
-        if (!freshUser?.emailVerified) {
+        if (!freshUser) {
+          setUser(null);
+          setWalletBalance(0);
+          setSuspended(false);
+          setKycTier(1);
+          setLoading(false);
+          return;
+        }
+
+        const isGoogleAccount = freshUser.providerData?.some((p) => p.providerId === 'google.com');
+        if (!freshUser.emailVerified && !isGoogleAccount) {
           await signOut(auth).catch(() => {});
           setUser(null);
           setWalletBalance(0);

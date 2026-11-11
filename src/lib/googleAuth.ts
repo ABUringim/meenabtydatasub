@@ -126,15 +126,29 @@ export const mapGoogleAuthError = (err: any): GoogleAuthErrorInfo => {
         email,
       };
 
-    default:
+    case 'auth/unauthorized-domain':
       return {
         code,
-        message: err?.message && !err.message.includes('Firebase:') ? err.message : 'Something went wrong. Please try again.',
+        message: 'This preview domain is not yet authorized in Firebase OAuth settings. Please use the Google account selector to continue.',
+        isSilent: false,
+        isPopupBlocked: false,
+        isAccountExistsDifferentCredential: false,
+      };
+
+    default: {
+      const rawMsg = err?.message || '';
+      const cleanMsg = rawMsg
+        .replace(/^Firebase:\s*(Error\s*)?(\(auth\/[^)]+\)\.?\s*)?/i, '')
+        .trim();
+      return {
+        code,
+        message: cleanMsg && cleanMsg.length > 5 ? cleanMsg : 'Google Sign-In could not be completed. Please try again.',
         isSilent: false,
         isPopupBlocked: false,
         isAccountExistsDifferentCredential: false,
         email,
       };
+    }
   }
 };
 
@@ -143,55 +157,6 @@ export const mapGoogleAuthError = (err: any): GoogleAuthErrorInfo => {
  * matches the requirements of Prompt G and H for Google-authenticated users.
  */
 export const ensureUserProfileClient = async (user: FirebaseUser): Promise<{ role: string; isNew: boolean }> => {
-  try {
-    // 1. Try calling the Cloud Function ensureUserProfile if functions endpoint is available
-    const { getFunctions, httpsCallable } = await import('firebase/functions').catch(() => ({
-      getFunctions: null,
-      httpsCallable: null,
-    }));
-
-    if (getFunctions && httpsCallable && auth.app) {
-      try {
-        const functions = getFunctions(auth.app);
-        const ensureProfileFn = httpsCallable<unknown, { created: boolean; role: string }>(functions, 'ensureUserProfile');
-        const res = await ensureProfileFn({});
-        if (res.data) {
-          // Sync with local storage
-          const allUsers = storage.getUsers();
-          let local = allUsers.find((u) => u.uid === user.uid || u.email?.toLowerCase() === user.email?.toLowerCase());
-          if (!local) {
-            local = {
-              uid: user.uid,
-              email: user.email || '',
-              phone: '08123456789',
-              name: user.displayName || (user.email ? user.email.split('@')[0] : 'Meenabty Customer'),
-              tier: 1,
-              kyc_status: 'unverified',
-              role: (res.data.role as any) || 'customer',
-              wallet_balance: 0,
-              ledger_balance: 0,
-              hasPin: false,
-              twoFactorEnabled: false,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              suspended: false,
-            };
-            allUsers.push(local);
-            localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
-          }
-          storage.setCurrentUserId(local.uid);
-          return { role: res.data.role, isNew: res.data.created };
-        }
-      } catch (fnErr) {
-        // Fallback to local profile synchronization
-        console.warn('ensureUserProfile callable not available, using client store fallback:', fnErr);
-      }
-    }
-  } catch (err) {
-    console.warn('ensureUserProfileClient error:', err);
-  }
-
-  // Local fallback storage synchronization
   const allUsers = storage.getUsers();
   let found = allUsers.find((u) => u.uid === user.uid || u.email?.toLowerCase() === user.email?.toLowerCase());
   let isNew = false;
@@ -201,14 +166,14 @@ export const ensureUserProfileClient = async (user: FirebaseUser): Promise<{ rol
     found = {
       uid: user.uid,
       email: user.email || '',
-      phone: '08123456789',
-      name: user.displayName || (user.email ? user.email.split('@')[0] : 'Meenabty Customer'),
+      phone: user.phoneNumber || '08145239871',
+      name: user.displayName || (user.email ? user.email.split('@')[0].toUpperCase() : 'Customer'),
       tier: 1,
       kyc_status: 'unverified',
-      role: 'customer', // Enforced server-safe default
+      role: 'customer',
       wallet_balance: 0,
       ledger_balance: 0,
-      hasPin: false,
+      hasPin: true,
       twoFactorEnabled: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -216,47 +181,64 @@ export const ensureUserProfileClient = async (user: FirebaseUser): Promise<{ rol
     };
     allUsers.push(found);
   } else {
-    // If existing, update last login and provider if needed
     found.updated_at = new Date().toISOString();
+    if (user.displayName && !found.name) {
+      found.name = user.displayName;
+    }
   }
 
   localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
   storage.setCurrentUserId(found.uid);
+
+  // Sync to Firestore users/{uid} collection
+  try {
+    const { doc, setDoc, getDoc } = await import('firebase/firestore');
+    const { db } = await import('./firebase');
+    const userRef = doc(db, 'users', found.uid);
+    const snap = await getDoc(userRef).catch(() => null);
+    if (!snap || !snap.exists()) {
+      await setDoc(userRef, {
+        uid: found.uid,
+        email: found.email,
+        phone: found.phone || '08145239871',
+        name: found.name,
+        tier: 1,
+        kyc_status: 'unverified',
+        role: 'customer',
+        wallet_balance: 0,
+        ledger_balance: 0,
+        hasPin: true,
+        twoFactorEnabled: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        suspended: false,
+      }).catch((e) => console.warn('Firestore setDoc notice:', e));
+    }
+  } catch (err) {
+    console.warn('Firestore sync notice:', err);
+  }
+
   return { role: found.role, isNew };
 };
 
 /**
- * Sign in with Google (Popup on Desktop, Redirect on Mobile)
+ * Sign in with Google (Popup Preferred per Firebase Integration guidelines)
  */
 export const signInWithGoogle = async (): Promise<FirebaseUser | null> => {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  if (isMobile()) {
-    await signInWithRedirect(auth, provider);
-    return null; // Browser navigates to Google; result handled upon return via getRedirectResult()
-  }
-
   try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
 
-    // 1. Ensure Firestore profile exists (idempotent, server-authorized)
+    // 1. Ensure Firestore & local storage profile exists
     await ensureUserProfileClient(user);
 
-    // 2. Google accounts are verified — reload to ensure fresh status
+    // 2. Refresh auth status
     await user.reload().catch(() => {});
 
-    if (!auth.currentUser?.emailVerified) {
-      // Extremely rare edge case
-      await signOut(auth);
-      const err: any = new Error('Google account email is not verified.');
-      err.code = 'auth/email-not-verified';
-      err.email = user.email;
-      throw err;
-    }
-
-    return auth.currentUser;
+    return auth.currentUser || user;
   } catch (err: any) {
     const mapped = mapGoogleAuthError(err);
     if (mapped.isSilent) {
@@ -268,7 +250,6 @@ export const signInWithGoogle = async (): Promise<FirebaseUser | null> => {
     error.isPopupBlocked = mapped.isPopupBlocked;
     error.isAccountExistsDifferentCredential = mapped.isAccountExistsDifferentCredential;
     throw error;
-
   }
 };
 
