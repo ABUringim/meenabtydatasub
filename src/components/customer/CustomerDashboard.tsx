@@ -47,7 +47,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
   onSelectService,
   onOpenFundWallet,
 }) => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const {
     balanceKobo,
     transactions,
@@ -67,6 +67,23 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
       setTimeout(() => setCopiedAccount(false), 2000);
     }
   };
+
+  if (loading || !user) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-2 bg-slate-200 rounded-2xl h-52 p-6" />
+          <div className="bg-slate-200 rounded-2xl h-52 p-5" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-20 bg-slate-200 rounded-xl" />
+          ))}
+        </div>
+        <div className="h-64 bg-slate-200 rounded-2xl" />
+      </div>
+    );
+  }
 
   const quickServices = [
     { id: 'service-airtime', label: 'Airtime VTU', icon: Smartphone, color: 'text-emerald-700 bg-emerald-50' },
@@ -159,36 +176,45 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
               </span>
             </div>
 
-            <div className="mt-4 space-y-3">
-              <div>
-                <p className="text-[11px] text-slate-500">Bank Name</p>
-                <p className="text-xs font-bold text-slate-900">{user?.virtual_account?.bankName || 'Wema Bank'}</p>
-              </div>
+            {user?.virtual_account?.accountNumber ? (
+              <div className="mt-4 space-y-3">
+                <div>
+                  <p className="text-[11px] text-slate-500">Bank Name</p>
+                  <p className="text-xs font-bold text-slate-900">{user.virtual_account.bankName || 'Wema Bank'}</p>
+                </div>
 
-              <div>
-                <p className="text-[11px] text-slate-500">Dedicated Account Number</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xl font-mono font-extrabold text-slate-900 tracking-wider">
-                    {user?.virtual_account?.accountNumber || '9928374102'}
-                  </span>
-                  <button
-                    onClick={handleCopyAccount}
-                    className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
-                    title="Copy Account Number"
-                  >
-                    {copiedAccount ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                  {copiedAccount && <span className="text-[10px] font-bold text-emerald-700">Copied!</span>}
+                <div>
+                  <p className="text-[11px] text-slate-500">Dedicated Account Number</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xl font-mono font-extrabold text-slate-900 tracking-wider">
+                      {user.virtual_account.accountNumber}
+                    </span>
+                    <button
+                      onClick={handleCopyAccount}
+                      className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
+                      title="Copy Account Number"
+                    >
+                      {copiedAccount ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                    {copiedAccount && <span className="text-[10px] font-bold text-emerald-700">Copied!</span>}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] text-slate-500">Beneficiary Name</p>
+                  <p className="text-xs font-medium text-slate-700 truncate">
+                    {user.virtual_account.accountName || `SAYYADA-${user?.name?.toUpperCase() || 'CUSTOMER'}`}
+                  </p>
                 </div>
               </div>
-
-              <div>
-                <p className="text-[11px] text-slate-500">Beneficiary Name</p>
-                <p className="text-xs font-medium text-slate-700 truncate">
-                  {user?.virtual_account?.accountName || `MEENABTY-${user?.name.toUpperCase()}`}
+            ) : (
+              <div className="mt-4 py-4 px-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center space-y-1.5">
+                <p className="text-xs font-semibold text-slate-700">Dedicated Account Not Assigned</p>
+                <p className="text-[11px] text-slate-500 leading-normal">
+                  Complete Tier 2 KYC verification to receive your permanent automated bank transfer account.
                 </p>
               </div>
-            </div>
+            )}
           </div>
 
           <p className="text-[10px] text-slate-400 mt-4 pt-3 border-t border-slate-100">

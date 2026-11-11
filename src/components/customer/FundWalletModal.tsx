@@ -183,33 +183,42 @@ export const FundWalletModal: React.FC<FundWalletModalProps> = ({
                 Your Meenabty wallet will be credited automatically within 10 seconds.
               </p>
 
-              <div className="bg-white p-3 rounded-lg border border-emerald-200 space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500">Bank Name</span>
-                  <span className="font-bold text-slate-900">{user?.virtual_account?.bankName || 'Wema Bank'}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500">Account Number</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-base font-extrabold text-emerald-900">
-                      {user?.virtual_account?.accountNumber || '9928374102'}
+              {user?.virtual_account?.accountNumber ? (
+                <div className="bg-white p-3 rounded-lg border border-emerald-200 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Bank Name</span>
+                    <span className="font-bold text-slate-900">{user.virtual_account.bankName || 'Wema Bank'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Account Number</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-base font-extrabold text-emerald-900">
+                        {user.virtual_account.accountNumber}
+                      </span>
+                      <button
+                        onClick={handleCopyAccount}
+                        className="p-1 text-emerald-700 hover:bg-emerald-100 rounded transition-colors"
+                        title="Copy account number"
+                      >
+                        {copiedAccount ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Account Name</span>
+                    <span className="font-semibold text-slate-900 text-right">
+                      {user.virtual_account.accountName || `SAYYADA-${user?.name?.toUpperCase() || 'CUSTOMER'}`}
                     </span>
-                    <button
-                      onClick={handleCopyAccount}
-                      className="p-1 text-emerald-700 hover:bg-emerald-100 rounded transition-colors"
-                      title="Copy account number"
-                    >
-                      {copiedAccount ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                    </button>
                   </div>
                 </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500">Account Name</span>
-                  <span className="font-semibold text-slate-900 text-right">
-                    {user?.virtual_account?.accountName || `MEENABTY-${user?.name.toUpperCase()}`}
-                  </span>
+              ) : (
+                <div className="bg-white p-4 rounded-lg border border-emerald-200 text-center space-y-2">
+                  <p className="text-xs font-semibold text-slate-700">Dedicated Account Not Yet Assigned</p>
+                  <p className="text-[11px] text-slate-500">
+                    Complete Tier 2 KYC (BVN/NIN) verification in Settings to get an automated dedicated bank account. You can top up instantly via Card or USSD above!
+                  </p>
                 </div>
-              </div>
+              )}
             </div>
 
             <button

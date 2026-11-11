@@ -11,6 +11,9 @@ const PORT = process.env.PORT || 3000;
 const BIGISUB_TOKEN = process.env.BIGISUB_TOKEN || '298ef51c9e7c646836e80b2a3ccd106d8f701241';
 const BIGISUB_BASE_URL = process.env.BIGISUB_BASE_URL || 'https://bigisub.ng/api/v1';
 
+// Paystack Configuration — Secret key is secured server-side only
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || '';
+
 app.use(express.json());
 
 // Helper for BigiSub HTTP requests
@@ -176,25 +179,9 @@ app.post('/api/vtu/verify-meter', async (req: Request, res: Response) => {
     console.warn('BigiSub meter pre-validation upstream notice:', e);
   }
 
-  // Resilient fallback with deterministic resolution to avoid blocking customers
-  const mockNames = [
-    'MALAM BELLO RINGIM',
-    'HAJIYA AISHA YUSUF',
-    'IBRAHIM DANLAMI',
-    'AHMAD SANI KANO',
-    'CHUKWUDI EZE',
-    'OLUWASEUN ADEYEMI',
-  ];
-  const sum = meterNo.split('').reduce((acc: number, c: string) => acc + (parseInt(c, 10) || 0), 0);
-  const resolvedName = mockNames[sum % mockNames.length];
-  const resolvedAddress = `Plot ${12 + (sum % 80)}, Ring Road / Commercial Avenue, ${disco || 'Kano'} Service Area`;
-
-  return res.json({
-    name: resolvedName,
-    address: resolvedAddress,
-    disco,
-    valid: true,
-    fallback: true,
+  return res.status(400).json({
+    valid: false,
+    error: 'Meter validation could not be confirmed by electricity distribution company. Please check your meter number.',
   });
 });
 
@@ -236,16 +223,9 @@ app.post('/api/vtu/verify-cable', async (req: Request, res: Response) => {
     console.warn('BigiSub cable pre-validation upstream notice:', e);
   }
 
-  const mockNames = ['FATIMA RINGIM', 'DR. MUSTAPHA AHMAD', 'MARYAM MUSA', 'EMMANUEL OBI', 'BASHIR UMAR'];
-  const sum = smartcardNo.split('').reduce((acc: number, c: string) => acc + (parseInt(c, 10) || 0), 0);
-  const resolvedName = mockNames[sum % mockNames.length];
-
-  return res.json({
-    customerName: resolvedName,
-    currentBouquet: provider === 'DSTV' ? 'DStv Yanga' : provider === 'GOTV' ? 'GOtv Jinja' : 'StarTimes Basic',
-    status: 'Active',
-    valid: true,
-    fallback: true,
+  return res.status(400).json({
+    valid: false,
+    error: 'Smartcard / IUC number could not be validated by cable provider.',
   });
 });
 
@@ -313,9 +293,10 @@ app.post('/api/vtu/buy', async (req: Request, res: Response) => {
       if (meterType === 'prepaid') {
         if (upstreamRes?.data?.token) {
           token = String(upstreamRes.data.token).replace('Token :', '').trim();
-        } else {
-          const rand4 = () => Math.floor(1000 + Math.random() * 9000);
-          token = `${rand4()}-${rand4()}-${rand4()}-${rand4()}-${rand4()}`;
+        } else if (upstreamRes?.data?.Token) {
+          token = String(upstreamRes.data.Token).replace('Token :', '').trim();
+        } else if (upstreamRes?.data?.meter_token) {
+          token = String(upstreamRes.data.meter_token).trim();
         }
         const kwh = (Number(amountNgn) / 68.2).toFixed(1);
         units = `${kwh} kWh`;
@@ -343,15 +324,51 @@ app.post('/api/vtu/buy', async (req: Request, res: Response) => {
       pins = [];
       if (Array.isArray(upstreamRes?.data?.pins)) {
         pins = upstreamRes.data.pins;
+      } else if (Array.isArray(upstreamRes?.data?.pin_list)) {
+        pins = upstreamRes.data.pin_list.map((p: any) => ({
+          pin: typeof p === 'string' ? p : p.pin || p.code,
+          serial: p.serial || `${examName}-SERIAL`,
+        }));
       } else if (upstreamRes?.data?.pin) {
-        pins = [{ pin: String(upstreamRes.data.pin), serial: `${examName}-2026-${Math.floor(10000 + Math.random() * 90000)}` }];
-      } else {
-        for (let i = 0; i < quantity; i++) {
-          const pinDigits = Math.floor(100000000000 + Math.random() * 900000000000);
-          const serialNo = `${examName}-2026-${Math.floor(10000 + Math.random() * 90000)}`;
-          pins.push({ pin: `PIN-${pinDigits}`, serial: serialNo });
-        }
+        pins = [{ pin: String(upstreamRes.data.pin), serial: String(upstreamRes.data.serial || `${examName}-SERIAL`) }];
       }
+    }
+
+    if (!upstreamRes || !upstreamRes.ok || upstreamRes.isHtml) {
+      const errMsg =
+        upstreamRes?.data?.message ||
+        upstreamRes?.data?.detail ||
+        upstreamRes?.data?.msg ||
+        upstreamRes?.error ||
+        'BigiSub upstream communication failure';
+      return res.status(502).json({
+        success: false,
+        code: '99',
+        message: errMsg,
+        timestamp,
+      });
+    }
+
+    const upData = upstreamRes.data || {};
+    const isSuccess =
+      upData.Status === 'successful' ||
+      upData.status === 'successful' ||
+      upData.Status === 'success' ||
+      upData.status === 'success' ||
+      upData.status === 'true' ||
+      upData.success === true ||
+      Boolean(upData.tran_id || upData.tranx_id || upData.request_id);
+
+    if (!isSuccess) {
+      const failReason =
+        upData.response || upData.message || upData.msg || upData.detail || 'BigiSub vending request failed';
+      return res.status(400).json({
+        success: false,
+        code: '99',
+        message: failReason,
+        rawResponse: upData,
+        timestamp,
+      });
     }
 
     // Extract operator references
@@ -377,7 +394,7 @@ app.post('/api/vtu/buy', async (req: Request, res: Response) => {
       token,
       units,
       pins,
-      rawResponse: upstreamRes?.isHtml ? { note: 'Upstream handshake delivered' } : upstreamRes?.data,
+      rawResponse: upstreamRes?.data,
       timestamp,
     });
   } catch (err: any) {
@@ -419,6 +436,160 @@ app.post('/api/vtu/requery', async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
     });
   }
+});
+
+// =================================================================
+// 6. Paystack Payment Gateway Integration (Server-Side Proxy)
+// =================================================================
+app.post('/api/paystack/initialize', async (req: Request, res: Response) => {
+  const { email, amountKobo, userId, metadata } = req.body;
+  if (!email || !amountKobo || Number(amountKobo) < 10000) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Invalid amount. Minimum wallet funding is ₦100.00 (10,000 kobo).',
+    });
+  }
+
+  const secretKey = PAYSTACK_SECRET_KEY;
+  if (!secretKey) {
+    console.error('PAYSTACK_SECRET_KEY is missing from server environment.');
+    return res.status(500).json({
+      status: 'error',
+      message: 'Payment provider not configured on server. Please set PAYSTACK_SECRET_KEY.',
+    });
+  }
+
+  const reference = `SD_PAY_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  const origin = req.headers.origin || `http://${req.headers.host}`;
+  const callbackUrl = `${origin}/payment-callback?reference=${reference}`;
+
+  try {
+    const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        amount: Number(amountKobo),
+        reference,
+        callback_url: callbackUrl,
+        metadata: {
+          userId,
+          platform: 'Sayyada Datasub',
+          ...(metadata || {}),
+        },
+      }),
+    });
+
+    const data: any = await paystackRes.json();
+    if (!paystackRes.ok || !data?.status || !data?.data?.authorization_url) {
+      return res.status(400).json({
+        status: 'error',
+        message: data?.message || 'Paystack payment initialization failed.',
+        details: data,
+      });
+    }
+
+    return res.json({
+      status: 'success',
+      authorizationUrl: data.data.authorization_url,
+      reference,
+      accessCode: data.data.access_code,
+    });
+  } catch (err: any) {
+    console.error('Paystack initialization network error:', err);
+    return res.status(502).json({
+      status: 'error',
+      message: err.message || 'Failed to connect to Paystack payment gateway.',
+    });
+  }
+});
+
+const verifyPaystackRef = async (reference: string, res: Response) => {
+  if (!reference || reference.trim() === '') {
+    return res.status(400).json({
+      status: 'failed',
+      message: 'Missing or empty transaction reference.',
+    });
+  }
+
+  const secretKey = PAYSTACK_SECRET_KEY;
+  if (!secretKey) {
+    return res.status(500).json({
+      status: 'failed',
+      message: 'PAYSTACK_SECRET_KEY is not configured.',
+    });
+  }
+
+  try {
+    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data: any = await verifyRes.json();
+    if (data?.status && data?.data?.status === 'success') {
+      return res.json({
+        status: 'success',
+        amount: data.data.amount,
+        reference: data.data.reference,
+        customer: data.data.customer,
+        metadata: data.data.metadata,
+        paid_at: data.data.paid_at,
+      });
+    } else if (data?.data?.status === 'pending') {
+      return res.json({
+        status: 'pending',
+        message: 'Payment is being processed by Paystack.',
+      });
+    } else {
+      return res.status(400).json({
+        status: 'failed',
+        message: data?.message || data?.data?.gateway_response || 'Payment verification could not be confirmed.',
+      });
+    }
+  } catch (err: any) {
+    console.error('Paystack verify network error:', err);
+    return res.status(502).json({
+      status: 'failed',
+      message: err.message || 'Paystack verification gateway error.',
+    });
+  }
+};
+
+app.post('/api/paystack/verify', async (req: Request, res: Response) => {
+  const reference = req.body?.reference;
+  return verifyPaystackRef(reference, res);
+});
+
+app.get('/api/paystack/verify/:reference', async (req: Request, res: Response) => {
+  const reference = req.params.reference;
+  return verifyPaystackRef(reference, res);
+});
+
+app.post('/api/paystack/webhook', async (req: Request, res: Response) => {
+  const signature = req.headers['x-paystack-signature'] as string;
+  const secretKey = PAYSTACK_SECRET_KEY;
+
+  if (secretKey && signature) {
+    const crypto = await import('crypto');
+    const hash = crypto.createHmac('sha512', secretKey).update(JSON.stringify(req.body)).digest('hex');
+    if (hash !== signature) {
+      return res.status(401).send('Invalid signature');
+    }
+  }
+
+  const event = req.body;
+  if (event?.event === 'charge.success') {
+    console.log('[Paystack Webhook] Verified payment:', event.data?.reference, event.data?.amount);
+  }
+
+  return res.status(200).send('Event received');
 });
 
 // =================================================================

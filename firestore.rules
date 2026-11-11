@@ -18,13 +18,17 @@ service cloud.firestore {
 
     function isStaffAdmin() {
       return isSignedIn() && (
+        request.auth.token.email == "auwalbashir1997@gmail.com" ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["admin", "owner"]
       );
     }
 
     function isPlatformOwner() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "owner";
+      return isSignedIn() && (
+        request.auth.token.email == "auwalbashir1997@gmail.com" ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "owner"
+      );
     }
 
     // --- Users Collection ---

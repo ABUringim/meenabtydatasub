@@ -95,29 +95,20 @@ const DEFAULT_ADMIN: UserProfile = {
   suspended: false,
 };
 
-// Initial Customer user
+// Default Customer template (strictly 0 balance, unverified)
 const DEFAULT_CUSTOMER: UserProfile = {
-  uid: 'usr_customer_meenabty_01',
-  email: 'aburingim1997@gmail.com',
-  phone: '08145239871',
-  name: 'Abubakar Ringim',
-  tier: 2,
-  kyc_status: 'verified',
+  uid: 'usr_customer_fresh_01',
+  email: 'customer@sayyadadatasub.com',
+  phone: '',
+  name: 'Customer',
+  tier: 1,
+  kyc_status: 'unverified',
   role: 'customer',
-  wallet_balance: 4500000, // ₦45,000.00
-  ledger_balance: 4500000,
-  hasPin: true,
+  wallet_balance: 0,
+  ledger_balance: 0,
+  hasPin: false,
   twoFactorEnabled: false,
-  bvn: '22345678901',
-  nin: '11223344556',
-  virtual_account: {
-    bankName: 'Wema Bank (Dedicated)',
-    accountNumber: '9928374102',
-    accountName: 'MEENABTY-ABUBAKAR RINGIM',
-  },
-  ip_address: '105.112.48.91 (Lagos, NG)',
-  last_login: new Date().toISOString(),
-  created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+  created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   suspended: false,
 };
@@ -241,374 +232,15 @@ const INITIAL_SYSTEM_HEALTH: SystemHealthStats = {
 };
 
 
-const INITIAL_BENEFICIARIES: Beneficiary[] = [
-  {
-    id: 'ben_01',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'phone',
-    label: 'My MTN Personal Line',
-    value: '08145239871',
-    provider: 'MTN',
-    meta: { network: 'MTN', planCategory: 'SME' },
-    lastUsedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-    created_at: new Date(Date.now() - 25 * 86400000).toISOString(),
-  },
-  {
-    id: 'ben_02',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'meter',
-    label: 'Kano Residence Prepaid Meter',
-    value: '04182910492',
-    provider: 'KEDCO',
-    meta: { disco: 'KEDCO (Kano Electric)', meterType: 'prepaid', address: 'Plot 44 Ring Road, Kano' },
-    lastUsedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-    created_at: new Date(Date.now() - 20 * 86400000).toISOString(),
-  },
-  {
-    id: 'ben_03',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'smartcard',
-    label: 'Living Room DStv Compact Plus',
-    value: '1092837461',
-    provider: 'DSTV',
-    meta: { bouquet: 'DStv Compact Plus', customerName: 'ABUBAKAR RINGIM' },
-    lastUsedAt: new Date(Date.now() - 4 * 86400000).toISOString(),
-    created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
-  },
-  {
-    id: 'ben_04',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'bank',
-    label: 'Brother Savings Account',
-    value: '0123456789',
-    provider: 'Guaranty Trust Bank (GTBank)',
-    meta: { bankCode: '058', accountName: 'USMAN RINGIM' },
-    lastUsedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-    created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
-  },
-];
+const INITIAL_BENEFICIARIES: Beneficiary[] = [];
 
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'txn_init_01',
-    user_id: DEFAULT_CUSTOMER.uid,
-    service: 'data',
-    provider: 'MTN',
-    reference: 'SAY_20261108_MTN_9812',
-    amount: 58000,
-    cost: 52000,
-    profit: 6000,
-    status: 'success',
-    recipient_details: {
-      phone: '08145239871',
-      network: 'MTN',
-      planName: 'MTN SME 2GB (30 Days)',
-      planCode: 'MTN_SME_2GB',
-    },
-    vtu_response: {
-      code: '00',
-      message: 'Delivered successfully by Aggregator',
-      operatorRef: 'MTN-OP-94821',
-      timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
-    },
-    retries: 0,
-    created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
-    completed_at: new Date(Date.now() - 2 * 3600000 + 1200).toISOString(),
-  },
-  {
-    id: 'txn_init_02',
-    user_id: DEFAULT_CUSTOMER.uid,
-    service: 'electricity',
-    provider: 'KEDCO',
-    reference: 'SAY_20261107_KEDCO_4102',
-    amount: 500000,
-    cost: 495000,
-    profit: 5000,
-    status: 'success',
-    recipient_details: {
-      meterNo: '04182910492',
-      meterType: 'prepaid',
-      disco: 'KEDCO (Kano Electric)',
-      customerName: 'MALAM BELLO RINGIM',
-      address: 'Plot 44 Ring Road, Kano',
-      token: '4829-1092-4820-9182-3847',
-      units: '73.3 kWh',
-    },
-    vtu_response: {
-      code: '00',
-      message: 'Token generated successfully',
-      operatorRef: 'KEDCO-STS-88192',
-      timestamp: new Date(Date.now() - 24 * 3600000).toISOString(),
-    },
-    retries: 0,
-    created_at: new Date(Date.now() - 24 * 3600000).toISOString(),
-    completed_at: new Date(Date.now() - 24 * 3600000 + 1500).toISOString(),
-  },
-  {
-    id: 'txn_init_03',
-    user_id: DEFAULT_CUSTOMER.uid,
-    service: 'tv',
-    provider: 'DSTV',
-    reference: 'SAY_20261105_DSTV_7721',
-    amount: 1980000,
-    cost: 1960000,
-    profit: 20000,
-    status: 'success',
-    recipient_details: {
-      smartcardNo: '1092837461',
-      customerName: 'ABUBAKAR RINGIM',
-      planName: 'DStv Compact Plus (Monthly)',
-    },
-    vtu_response: {
-      code: '00',
-      message: 'Subscription renewal completed',
-      operatorRef: 'DSTV-MC-77182',
-      timestamp: new Date(Date.now() - 4 * 86400000).toISOString(),
-    },
-    retries: 0,
-    created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
-    completed_at: new Date(Date.now() - 4 * 86400000 + 1100).toISOString(),
-  },
-  {
-    id: 'txn_init_04',
-    user_id: DEFAULT_CUSTOMER.uid,
-    service: 'exam',
-    provider: 'WAEC',
-    reference: 'SAY_20261104_WAEC_1192',
-    amount: 350000,
-    cost: 335000,
-    profit: 15000,
-    status: 'success',
-    recipient_details: {
-      examType: 'WAEC',
-      quantity: 1,
-      pins: [{ pin: 'PIN-981248921829', serial: 'WAEC-2026-48291' }],
-    },
-    vtu_response: {
-      code: '00',
-      message: 'e-PINs issued instantly',
-      operatorRef: 'WAEC-EPIN-11928',
-      timestamp: new Date(Date.now() - 6 * 86400000).toISOString(),
-    },
-    retries: 0,
-    created_at: new Date(Date.now() - 6 * 86400000).toISOString(),
-    completed_at: new Date(Date.now() - 6 * 86400000 + 800).toISOString(),
-  },
-  {
-    id: 'txn_init_05',
-    user_id: DEFAULT_CUSTOMER.uid,
-    service: 'airtime',
-    provider: 'Airtel',
-    reference: 'SAY_20261102_AIRTEL_9012',
-    amount: 100000,
-    cost: 97000,
-    profit: 3000,
-    status: 'success',
-    recipient_details: {
-      phone: '08023456789',
-      network: 'Airtel',
-      nominalAmount: 1000,
-    },
-    vtu_response: {
-      code: '00',
-      message: 'Airtime topped up',
-      operatorRef: 'AIRTEL-VTU-9012',
-      timestamp: new Date(Date.now() - 9 * 86400000).toISOString(),
-    },
-    retries: 0,
-    created_at: new Date(Date.now() - 9 * 86400000).toISOString(),
-    completed_at: new Date(Date.now() - 9 * 86400000 + 900).toISOString(),
-  },
-  {
-    id: 'txn_init_06',
-    user_id: DEFAULT_CUSTOMER.uid,
-    service: 'data',
-    provider: 'Glo',
-    reference: 'SAY_20261101_GLO_3321',
-    amount: 250000,
-    cost: 235000,
-    profit: 15000,
-    status: 'failed',
-    failure_reason: 'Telco timeout: Gateway unreachable. Funds automatically refunded to wallet.',
-    recipient_details: {
-      phone: '08051234567',
-      network: 'Glo',
-      planName: 'Glo 10GB Data Plan',
-    },
-    vtu_response: {
-      code: '99',
-      message: 'Delivery timeout',
-      timestamp: new Date(Date.now() - 12 * 86400000).toISOString(),
-    },
-    retries: 2,
-    created_at: new Date(Date.now() - 12 * 86400000).toISOString(),
-    completed_at: new Date(Date.now() - 12 * 86400000 + 2000).toISOString(),
-  },
-];
+const INITIAL_TRANSACTIONS: Transaction[] = [];
 
-const INITIAL_ACTIVITIES: CustomerActivity[] = [
-  {
-    id: 'act_01',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'data',
-    title: 'Purchased MTN SME 2GB Data',
-    transactionRef: 'SAY_20261108_MTN_9812',
-    amount: 58000,
-    status: 'success',
-    created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
-  },
-  {
-    id: 'act_02',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'fund_wallet',
-    title: 'Wallet Funded via Dedicated Virtual Account',
-    amount: 5000000,
-    status: 'success',
-    created_at: new Date(Date.now() - 22 * 3600000).toISOString(),
-  },
-  {
-    id: 'act_03',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'electricity',
-    title: 'Paid KEDCO Prepaid Electricity Bill',
-    transactionRef: 'SAY_20261107_KEDCO_4102',
-    amount: 500000,
-    status: 'success',
-    created_at: new Date(Date.now() - 24 * 3600000).toISOString(),
-  },
-  {
-    id: 'act_04',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'tv',
-    title: 'Renewed DStv Compact Plus Bouquet',
-    transactionRef: 'SAY_20261105_DSTV_7721',
-    amount: 1980000,
-    status: 'success',
-    created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
-  },
-  {
-    id: 'act_05',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'beneficiary_added',
-    title: 'Saved Beneficiary: Living Room DStv Compact Plus',
-    status: 'success',
-    created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
-  },
-  {
-    id: 'act_06',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'exam',
-    title: 'Issued 1x WAEC Result Checker PIN',
-    transactionRef: 'SAY_20261104_WAEC_1192',
-    amount: 350000,
-    status: 'success',
-    created_at: new Date(Date.now() - 6 * 86400000).toISOString(),
-  },
-  {
-    id: 'act_07',
-    user_id: DEFAULT_CUSTOMER.uid,
-    type: 'login',
-    title: 'Security Login from Kano (IP: 105.112.48.91)',
-    status: 'success',
-    created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
-  },
-];
+const INITIAL_ACTIVITIES: CustomerActivity[] = [];
 
-const INITIAL_RECEIPTS: CustomerReceipt[] = [
-  {
-    id: 'rcpt_01',
-    user_id: DEFAULT_CUSTOMER.uid,
-    transactionRef: 'SAY_20261108_MTN_9812',
-    service: 'data',
-    provider: 'MTN',
-    recipient: '08145239871',
-    amount: 58000,
-    status: 'success',
-    issuedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-  },
-  {
-    id: 'rcpt_02',
-    user_id: DEFAULT_CUSTOMER.uid,
-    transactionRef: 'SAY_20261107_KEDCO_4102',
-    service: 'electricity',
-    provider: 'KEDCO',
-    recipient: '04182910492',
-    amount: 500000,
-    status: 'success',
-    issuedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-  },
-  {
-    id: 'rcpt_03',
-    user_id: DEFAULT_CUSTOMER.uid,
-    transactionRef: 'SAY_20261105_DSTV_7721',
-    service: 'tv',
-    provider: 'DSTV',
-    recipient: '1092837461',
-    amount: 1980000,
-    status: 'success',
-    issuedAt: new Date(Date.now() - 4 * 86400000).toISOString(),
-  },
-  {
-    id: 'rcpt_04',
-    user_id: DEFAULT_CUSTOMER.uid,
-    transactionRef: 'SAY_20261104_WAEC_1192',
-    service: 'exam',
-    provider: 'WAEC',
-    recipient: '1 PIN Issued',
-    amount: 350000,
-    status: 'success',
-    issuedAt: new Date(Date.now() - 6 * 86400000).toISOString(),
-  },
-  {
-    id: 'rcpt_05',
-    user_id: DEFAULT_CUSTOMER.uid,
-    transactionRef: 'SAY_20261102_AIRTEL_9012',
-    service: 'airtime',
-    provider: 'Airtel',
-    recipient: '08023456789',
-    amount: 100000,
-    status: 'success',
-    issuedAt: new Date(Date.now() - 9 * 86400000).toISOString(),
-  },
-];
+const INITIAL_RECEIPTS: CustomerReceipt[] = [];
 
-const INITIAL_SPENDING: CustomerSpending[] = [
-  {
-    service: 'data',
-    totalSpent: 58000,
-    transactionCount: 1,
-    lastTransactionAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-  },
-  {
-    service: 'electricity',
-    totalSpent: 500000,
-    transactionCount: 1,
-    lastTransactionAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-    updatedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-  },
-  {
-    service: 'tv',
-    totalSpent: 1980000,
-    transactionCount: 1,
-    lastTransactionAt: new Date(Date.now() - 4 * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 4 * 86400000).toISOString(),
-  },
-  {
-    service: 'exam',
-    totalSpent: 350000,
-    transactionCount: 1,
-    lastTransactionAt: new Date(Date.now() - 6 * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 6 * 86400000).toISOString(),
-  },
-  {
-    service: 'airtime',
-    totalSpent: 100000,
-    transactionCount: 1,
-    lastTransactionAt: new Date(Date.now() - 9 * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 9 * 86400000).toISOString(),
-  },
-];
+const INITIAL_SPENDING: CustomerSpending[] = [];
 
 class StorageService {
   private getItem<T>(key: string, defaultValue: T): T {
@@ -641,8 +273,26 @@ class StorageService {
   }
 
   public bootstrap() {
+    // Purge legacy phantom demo customer and any lingering ₦45,000 balance from previous sessions
+    const curUid = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
+    if (curUid === 'usr_customer_meenabty_01' || curUid === 'usr_customer_fresh_01') {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+    }
+    const storedUsers = this.getItem<UserProfile[]>(STORAGE_KEYS.USERS, []);
+    if (storedUsers.some((u) => u.wallet_balance === 4500000 || u.uid === 'usr_customer_meenabty_01')) {
+      const sanitized = storedUsers
+        .filter((u) => u.uid !== 'usr_customer_meenabty_01' && u.email !== 'aburingim1997@gmail.com')
+        .map((u) => (u.role === 'customer' ? { ...u, wallet_balance: 0, ledger_balance: 0 } : u));
+      this.setItem(STORAGE_KEYS.USERS, sanitized.length ? sanitized : [DEFAULT_OWNER, DEFAULT_ADMIN]);
+      this.setItem(STORAGE_KEYS.TRANSACTIONS, []);
+      this.setItem(STORAGE_KEYS.BENEFICIARIES, []);
+      this.setItem(STORAGE_KEYS.ACTIVITY, []);
+      this.setItem(STORAGE_KEYS.RECEIPTS, []);
+      this.setItem(STORAGE_KEYS.SPENDING, []);
+    }
+
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-      this.setItem(STORAGE_KEYS.USERS, [DEFAULT_OWNER, DEFAULT_ADMIN, DEFAULT_CUSTOMER]);
+      this.setItem(STORAGE_KEYS.USERS, [DEFAULT_OWNER, DEFAULT_ADMIN]);
     }
     if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
       this.setItem(STORAGE_KEYS.SETTINGS, INITIAL_SETTINGS);
@@ -664,22 +314,22 @@ class StorageService {
       this.setItem(STORAGE_KEYS.PROVIDERS, INITIAL_PROVIDERS);
     }
     if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) {
-      this.setItem(STORAGE_KEYS.CURRENT_USER_ID, DEFAULT_CUSTOMER.uid);
+      this.setItem(STORAGE_KEYS.CURRENT_USER_ID, '');
     }
     if (!localStorage.getItem(STORAGE_KEYS.TRANSACTIONS)) {
-      this.setItem(STORAGE_KEYS.TRANSACTIONS, INITIAL_TRANSACTIONS);
+      this.setItem(STORAGE_KEYS.TRANSACTIONS, []);
     }
     if (!localStorage.getItem(STORAGE_KEYS.BENEFICIARIES)) {
-      this.setItem(STORAGE_KEYS.BENEFICIARIES, INITIAL_BENEFICIARIES);
+      this.setItem(STORAGE_KEYS.BENEFICIARIES, []);
     }
     if (!localStorage.getItem(STORAGE_KEYS.ACTIVITY)) {
-      this.setItem(STORAGE_KEYS.ACTIVITY, INITIAL_ACTIVITIES);
+      this.setItem(STORAGE_KEYS.ACTIVITY, []);
     }
     if (!localStorage.getItem(STORAGE_KEYS.RECEIPTS)) {
-      this.setItem(STORAGE_KEYS.RECEIPTS, INITIAL_RECEIPTS);
+      this.setItem(STORAGE_KEYS.RECEIPTS, []);
     }
     if (!localStorage.getItem(STORAGE_KEYS.SPENDING)) {
-      this.setItem(STORAGE_KEYS.SPENDING, INITIAL_SPENDING);
+      this.setItem(STORAGE_KEYS.SPENDING, []);
     }
     if (!localStorage.getItem(STORAGE_KEYS.USER_NOTIFICATIONS)) {
       this.setItem(STORAGE_KEYS.USER_NOTIFICATIONS, INITIAL_USER_NOTIFICATIONS);
@@ -691,7 +341,7 @@ class StorageService {
 
   // --- Users ---
   getUsers(): UserProfile[] {
-    return this.getItem<UserProfile[]>(STORAGE_KEYS.USERS, [DEFAULT_OWNER, DEFAULT_ADMIN, DEFAULT_CUSTOMER]);
+    return this.getItem<UserProfile[]>(STORAGE_KEYS.USERS, [DEFAULT_OWNER, DEFAULT_ADMIN]);
   }
 
   getUser(uid: string): UserProfile | null {

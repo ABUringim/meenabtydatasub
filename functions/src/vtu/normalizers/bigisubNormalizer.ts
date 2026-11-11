@@ -46,9 +46,6 @@ export function normalizeBigiSubResponse(
       token = String(data.token).replace('Token :', '').trim();
     } else if (data?.Token) {
       token = String(data.Token).replace('Token :', '').trim();
-    } else if (recipientDetails.meterType === 'prepaid') {
-      const rand4 = () => Math.floor(1000 + Math.random() * 9000);
-      token = `${rand4()}-${rand4()}-${rand4()}-${rand4()}-${rand4()}`;
     }
     const kwh = (amountNgn / 68.2).toFixed(1);
     units = `${kwh} kWh`;
@@ -60,16 +57,10 @@ export function normalizeBigiSubResponse(
     } else if (Array.isArray(data?.pin_list)) {
       pins = data.pin_list.map((p: any) => ({
         pin: typeof p === 'string' ? p : p.pin || p.code,
-        serial: p.serial || `${recipientDetails.examType || 'EXAM'}-2026-${Math.floor(10000 + Math.random() * 90000)}`,
+        serial: p.serial || `${recipientDetails.examType || 'EXAM'}-SERIAL`,
       }));
-    } else {
-      const qty = recipientDetails.quantity || 1;
-      pins = [];
-      for (let i = 0; i < qty; i++) {
-        const pinDigits = Math.floor(100000000000 + Math.random() * 900000000000);
-        const serialNo = `${recipientDetails.examType || 'EXAM'}-2026-${Math.floor(10000 + Math.random() * 90000)}`;
-        pins.push({ pin: `PIN-${pinDigits}`, serial: serialNo });
-      }
+    } else if (data?.pin) {
+      pins = [{ pin: String(data.pin), serial: String(data.serial || `${recipientDetails.examType || 'EXAM'}-SERIAL`) }];
     }
   }
 

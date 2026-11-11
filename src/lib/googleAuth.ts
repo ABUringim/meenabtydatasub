@@ -258,27 +258,6 @@ export const signInWithGoogle = async (): Promise<FirebaseUser | null> => {
 
     return auth.currentUser;
   } catch (err: any) {
-    const code = err?.code || '';
-    if (
-      code === 'auth/invalid-api-key' ||
-      code === 'auth/api-key-not-valid' ||
-      code === 'auth/internal-error' ||
-      err?.message?.includes('API key') ||
-      err?.message?.includes('dummy')
-    ) {
-      const fallbackUser: any = {
-        uid: 'usr_google_ringim_97',
-        email: 'aburingim1997@gmail.com',
-        displayName: 'Abubakar Ringim',
-        emailVerified: true,
-        photoURL: null,
-        providerData: [{ providerId: 'google.com', email: 'aburingim1997@gmail.com' }],
-        reload: async () => {},
-      };
-      await ensureUserProfileClient(fallbackUser);
-      return fallbackUser as FirebaseUser;
-    }
-
     const mapped = mapGoogleAuthError(err);
     if (mapped.isSilent) {
       return null;
@@ -289,6 +268,7 @@ export const signInWithGoogle = async (): Promise<FirebaseUser | null> => {
     error.isPopupBlocked = mapped.isPopupBlocked;
     error.isAccountExistsDifferentCredential = mapped.isAccountExistsDifferentCredential;
     throw error;
+
   }
 };
 

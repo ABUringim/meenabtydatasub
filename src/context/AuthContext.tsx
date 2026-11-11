@@ -38,9 +38,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
   const [adminSessionActive, setAdminSessionActive] = useState<boolean>(true);
 
-  // Sync Firebase Auth state changes
+  // Sync Firebase Auth state changes & real-time Firestore user document
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+    let firestoreUnsub: (() => void) | null = null;
+
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (firestoreUnsub) {
+        firestoreUnsub();
+        firestoreUnsub = null;
+      }
+
       if (!fbUser) {
         setFirebaseUser(null);
         // Only keep admin session if explicitly loaded
@@ -58,33 +65,106 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setFirebaseUser(fbUser);
-      setLoading(false);
 
-      if (fbUser.email) {
-        // Construct in-memory profile without saving to database or storage
-        const allUsers = storage.getUsers();
-        const existing = allUsers.find((u) => u.email.toLowerCase() === fbUser.email?.toLowerCase());
-        const profile: UserProfile = existing || {
-          uid: fbUser.uid,
-          email: fbUser.email,
-          phone: fbUser.phoneNumber || '08123456789',
-          name: fbUser.displayName || fbUser.email.split('@')[0].toUpperCase(),
-          tier: 1,
-          kyc_status: 'unverified',
-          role: 'customer',
-          wallet_balance: 0,
-          ledger_balance: 0,
-          hasPin: true,
-          twoFactorEnabled: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          suspended: false,
-        };
-        setCurrentUser(profile);
+      // Listen directly to user profile in Firestore
+      try {
+        const { doc, onSnapshot, setDoc } = await import('firebase/firestore');
+        const { db } = await import('../lib/firebase');
+        const userRef = doc(db, 'users', fbUser.uid);
+
+        firestoreUnsub = onSnapshot(
+          userRef,
+          async (snap) => {
+            if (snap.exists()) {
+              const data = snap.data();
+              const profile: UserProfile = {
+                uid: fbUser.uid,
+                email: fbUser.email || data.email || '',
+                phone: data.phone || fbUser.phoneNumber || '',
+                name: data.name || data.displayName || fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0].toUpperCase() : 'CUSTOMER'),
+                tier: data.tier || data.kycTier || 1,
+                kyc_status: data.kyc_status || 'unverified',
+                role: data.role || 'customer',
+                wallet_balance: data.wallet_balance ?? data.walletBalance ?? 0,
+                ledger_balance: data.ledger_balance ?? data.wallet_balance ?? 0,
+                hasPin: Boolean(data.hasPin),
+                twoFactorEnabled: Boolean(data.twoFactorEnabled),
+                virtual_account: data.virtual_account,
+                created_at: data.created_at || new Date().toISOString(),
+                updated_at: data.updated_at || new Date().toISOString(),
+                suspended: Boolean(data.suspended),
+              };
+              storage.setCurrentUserId(fbUser.uid);
+              setCurrentUser(profile);
+              setLoading(false);
+            } else {
+              // Brand new user: initialize in Firestore with strictly 0 balance
+              const freshProfile: UserProfile = {
+                uid: fbUser.uid,
+                email: fbUser.email || '',
+                phone: fbUser.phoneNumber || '',
+                name: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0].toUpperCase() : 'CUSTOMER'),
+                tier: 1,
+                kyc_status: 'unverified',
+                role: 'customer',
+                wallet_balance: 0,
+                ledger_balance: 0,
+                hasPin: false,
+                twoFactorEnabled: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                suspended: false,
+              };
+
+              await setDoc(userRef, {
+                ...freshProfile,
+                wallet_balance: 0,
+                ledger_balance: 0,
+                createdAt: new Date().toISOString(),
+              }).catch((err) => {
+                console.warn('Firestore user profile initialization notice:', err);
+              });
+
+              storage.setCurrentUserId(fbUser.uid);
+              setCurrentUser(freshProfile);
+              setLoading(false);
+            }
+          },
+          (err) => {
+            console.warn('Firestore onSnapshot listener error:', err);
+            // Fallback in-memory profile strictly with 0 balance
+            const profile: UserProfile = {
+              uid: fbUser.uid,
+              email: fbUser.email || '',
+              phone: fbUser.phoneNumber || '',
+              name: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0].toUpperCase() : 'CUSTOMER'),
+              tier: 1,
+              kyc_status: 'unverified',
+              role: 'customer',
+              wallet_balance: 0,
+              ledger_balance: 0,
+              hasPin: false,
+              twoFactorEnabled: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              suspended: false,
+            };
+            setCurrentUser(profile);
+            setLoading(false);
+          }
+        );
+      } catch (e) {
+        console.warn('Could not initialize firestore snapshot listener:', e);
+        setLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (firestoreUnsub) {
+        firestoreUnsub();
+      }
+    };
   }, []);
 
   // Touch session on active admin user events

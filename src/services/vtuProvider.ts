@@ -37,45 +37,23 @@ class VtuProviderService {
       throw new Error('Invalid meter number. Must be at least 8 to 11 digits.');
     }
 
-    try {
-      const res = await fetch('/api/vtu/verify-meter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ disco, meterNo, meterType }),
-      });
+    const res = await fetch('/api/vtu/verify-meter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disco, meterNo, meterType }),
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return {
-          name: data.name,
-          address: data.address,
-          disco: data.disco || disco,
-          valid: true,
-        };
-      }
-    } catch (e) {
-      console.warn('Backend proxy /api/vtu/verify-meter failed, falling back to local resolver', e);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.valid) {
+      return {
+        name: data.name,
+        address: data.address,
+        disco: data.disco || disco,
+        valid: true,
+      };
     }
 
-    // Deterministic fallback if server proxy is unavailable
-    const mockNames = [
-      'MALAM BELLO RINGIM',
-      'HAJIYA AISHA YUSUF',
-      'IBRAHIM DANLAMI',
-      'AHMAD SANI KANO',
-      'CHUKWUDI EZE',
-      'OLUWASEUN ADEYEMI',
-    ];
-    const sum = meterNo.split('').reduce((acc, c) => acc + (parseInt(c, 10) || 0), 0);
-    const resolvedName = mockNames[sum % mockNames.length];
-    const resolvedAddress = `Plot ${12 + (sum % 80)}, Ring Road / Commercial Avenue, ${disco.split(' ')[0]} Area`;
-
-    return {
-      name: resolvedName,
-      address: resolvedAddress,
-      disco,
-      valid: true,
-    };
+    throw new Error(data.error || 'Could not verify electricity meter details with provider.');
   }
 
   /**
@@ -91,42 +69,23 @@ class VtuProviderService {
       throw new Error('Invalid smartcard / IUC number.');
     }
 
-    try {
-      const res = await fetch('/api/vtu/verify-cable', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, smartcardNo }),
-      });
+    const res = await fetch('/api/vtu/verify-cable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, smartcardNo }),
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return {
-          customerName: data.customerName,
-          currentBouquet: data.currentBouquet,
-          status: data.status || 'Active',
-          valid: true,
-        };
-      }
-    } catch (e) {
-      console.warn('Backend proxy /api/vtu/verify-cable failed, falling back to local resolver', e);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.valid) {
+      return {
+        customerName: data.customerName,
+        currentBouquet: data.currentBouquet,
+        status: data.status || 'Active',
+        valid: true,
+      };
     }
 
-    const mockNames = [
-      'FATIMA RINGIM',
-      'DR. MUSTAPHA AHMAD',
-      'MARYAM MUSA',
-      'EMMANUEL OBI',
-      'BASHIR UMAR',
-    ];
-    const sum = smartcardNo.split('').reduce((acc, c) => acc + (parseInt(c, 10) || 0), 0);
-    const resolvedName = mockNames[sum % mockNames.length];
-
-    return {
-      customerName: resolvedName,
-      currentBouquet: provider === 'DSTV' ? 'DStv Yanga' : provider === 'GOTV' ? 'GOtv Jinja' : 'StarTimes Basic',
-      status: 'Active',
-      valid: true,
-    };
+    throw new Error(data.error || 'Could not verify smartcard details with cable provider.');
   }
 
   /**
@@ -200,65 +159,23 @@ class VtuProviderService {
     // 3. Dispatch to Active BigiSub VTU Aggregator API via Backend Proxy
     try {
       const amountNgn = amountKobo / 100;
-      let vtuData: any = null;
 
-      try {
-        const response = await fetch('/api/vtu/buy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            service,
-            provider,
-            amountNgn,
-            recipientDetails,
-            reference,
-          }),
-        });
+      const response = await fetch("/api/vtu/buy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          service,
+          provider,
+          amountNgn,
+          recipientDetails,
+          reference,
+        }),
+      });
 
-        if (response.ok) {
-          vtuData = await response.json();
-        } else {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.message || `Upstream status ${response.status}`);
-        }
-      } catch (networkErr: any) {
-        console.warn('Live BigiSub backend proxy unreachable or errored, performing simulated fallback:', networkErr);
-        // If simulation failure test keyword is present
-        const recipientString = JSON.stringify(recipientDetails).toLowerCase();
-        if (recipientString.includes('fail') || recipientString.includes('error')) {
-          throw new Error('Operator network timeout: Failed to deliver payload to BigiSub telecommunications gateway.');
-        }
+      const vtuData = await response.json().catch(() => ({}));
 
-        // Fallback simulation
-        await new Promise((r) => setTimeout(r, 800));
-        let generatedToken: string | undefined;
-        let generatedUnits: string | undefined;
-        let generatedPins: Array<{ pin: string; serial: string }> | undefined;
-
-        if (service === 'electricity' && recipientDetails.meterType === 'prepaid') {
-          const rand4 = () => Math.floor(1000 + Math.random() * 9000);
-          generatedToken = `${rand4()}-${rand4()}-${rand4()}-${rand4()}-${rand4()}`;
-          const kwh = (amountNgn / 68.2).toFixed(1);
-          generatedUnits = `${kwh} kWh`;
-        } else if (service === 'exam') {
-          const qty = recipientDetails.quantity || 1;
-          generatedPins = [];
-          for (let i = 0; i < qty; i++) {
-            const pinDigits = Math.floor(100000000000 + Math.random() * 900000000000);
-            const serialNo = `${provider}-2026-${Math.floor(10000 + Math.random() * 90000)}`;
-            generatedPins.push({ pin: `PIN-${pinDigits}`, serial: serialNo });
-          }
-        }
-
-        vtuData = {
-          success: true,
-          code: '00',
-          message: 'Delivered successfully by BigiSub Gateway Core',
-          operatorRef: `BS-${Date.now().toString(36).toUpperCase()}`,
-          token: generatedToken,
-          units: generatedUnits,
-          pins: generatedPins,
-        };
+      if (!response.ok || !vtuData.success) {
+        throw new Error(vtuData.message || ("Upstream status " + response.status));
       }
 
       const operatorRef = vtuData.operatorRef || `BS-${Date.now().toString(36).toUpperCase()}`;
