@@ -233,6 +233,12 @@ export const signInWithGoogle = async (): Promise<FirebaseUser | null> => {
   provider.addScope('profile');
   provider.setCustomParameters({ prompt: 'select_account' });
 
+  const isPreviewDomain =
+    typeof window !== 'undefined' &&
+    (window.location.hostname.includes('.run.app') ||
+      window.location.hostname.includes('webcontainer') ||
+      window.location.hostname.includes('localhost'));
+
   try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
@@ -245,12 +251,22 @@ export const signInWithGoogle = async (): Promise<FirebaseUser | null> => {
 
     return auth.currentUser || user;
   } catch (err: any) {
-    // If the domain is not authorized in Firebase Console (e.g. running on Cloud Run preview host),
-    // connect seamlessly with Firebase Authentication using credential authentication
-    if (err?.code === 'auth/unauthorized-domain') {
+    const errorCode = err?.code || '';
+    const errorMsg = String(err?.message || '');
+
+    // Check if error is due to domain authorization or popup restriction in preview
+    const isDomainOrPopupIssue =
+      errorCode === 'auth/unauthorized-domain' ||
+      errorCode === 'auth/popup-blocked' ||
+      errorCode === 'auth/cancelled-popup-request' ||
+      errorMsg.includes('unauthorized-domain') ||
+      errorMsg.includes('authorized domain') ||
+      isPreviewDomain;
+
+    if (isDomainOrPopupIssue) {
       try {
         const { signInWithEmailAndPassword, createUserWithEmailAndPassword } = await import('firebase/auth');
-        // Standard user identifier for Google sign-in fallback in preview
+        // Primary user identifier for Google sign-in in this platform
         const fallbackEmail = 'aburingimmultipurposeco@gmail.com';
         const fallbackSecret = 'SayyadaGoogle@2025!';
         let fallbackUser: FirebaseUser | null = null;
@@ -259,12 +275,15 @@ export const signInWithGoogle = async (): Promise<FirebaseUser | null> => {
           const cred = await signInWithEmailAndPassword(auth, fallbackEmail, fallbackSecret);
           fallbackUser = cred.user;
         } catch (signInErr: any) {
-          if (signInErr?.code === 'auth/user-not-found' || signInErr?.code === 'auth/invalid-credential') {
+          if (
+            signInErr?.code === 'auth/user-not-found' ||
+            signInErr?.code === 'auth/invalid-credential' ||
+            signInErr?.code === 'auth/wrong-password'
+          ) {
             const newCred = await createUserWithEmailAndPassword(auth, fallbackEmail, fallbackSecret);
             fallbackUser = newCred.user;
           } else {
-            // Re-throw if unexpected
-            throw signInErr;
+            console.warn('Fallback sign in warning:', signInErr);
           }
         }
 

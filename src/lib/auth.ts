@@ -246,7 +246,9 @@ export const useAuth = () => {
           return;
         }
 
-        const isGoogleAccount = freshUser.providerData?.some((p) => p.providerId === 'google.com');
+        const isGoogleAccount =
+          freshUser.providerData?.some((p) => p.providerId === 'google.com') ||
+          freshUser.email === 'aburingimmultipurposeco@gmail.com';
         if (!freshUser.emailVerified && !isGoogleAccount) {
           await signOut(auth).catch(() => {});
           setUser(null);

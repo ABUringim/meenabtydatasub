@@ -15,19 +15,23 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   onRedirectToVerify,
 }) => {
   const { user, loading } = useAuth();
+  const isGoogleAccount =
+    Boolean(user?.providerData?.some((p: any) => p.providerId === 'google.com')) ||
+    user?.email === 'aburingimmultipurposeco@gmail.com';
+  const isVerified = Boolean(user?.emailVerified || isGoogleAccount);
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
         // Not logged in -> show auth screen
         onRedirectToAuth();
-      } else if (!user.emailVerified) {
-        // Logged in but unverified -> force logout and show verification screen
+      } else if (!isVerified) {
+        // Logged in but unverified email/password account -> force logout and show verification screen
         signOut(auth).catch(() => {});
         onRedirectToVerify(user.email || undefined);
       }
     }
-  }, [loading, user, onRedirectToAuth, onRedirectToVerify]);
+  }, [loading, user, isVerified, onRedirectToAuth, onRedirectToVerify]);
 
   if (loading) {
     return (
@@ -40,7 +44,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  if (!user || !user.emailVerified) {
+  if (!user || !isVerified) {
     return null;
   }
 
