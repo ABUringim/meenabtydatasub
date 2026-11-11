@@ -4,6 +4,7 @@ import { formatKoboToNgn, generateReference, isValidNigerianPhone } from '../../
 import { PinConfirmModal } from '../../shared/PinConfirmModal';
 import { GraduationCap, Zap, AlertCircle } from 'lucide-react';
 import { ProductItem } from '../../../types';
+import ServiceAccessButton from '../../services/ServiceAccessButton';
 
 export const ExamPinService: React.FC = () => {
   const { products, vend, balanceKobo } = useWallet();
@@ -121,9 +122,22 @@ export const ExamPinService: React.FC = () => {
                     <p className="text-xs font-bold">{p.name}</p>
                     <p className="text-[11px] text-slate-500 mt-0.5">Instant Serial & PIN Generation</p>
                   </div>
-                  <span className="font-mono font-bold text-sm text-emerald-800">
-                    {formatKoboToNgn(p.selling_price)}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono font-bold text-sm text-emerald-800">
+                      {formatKoboToNgn(p.selling_price)}
+                    </span>
+                    <ServiceAccessButton
+                      product={p}
+                      onBuy={(product: ProductItem) => {
+                        setSelectedExamId(product.id);
+                        if (!phone) {
+                          setError('Please enter a recipient phone number first');
+                          return;
+                        }
+                        setIsPinModalOpen(true);
+                      }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -185,13 +199,31 @@ export const ExamPinService: React.FC = () => {
             </div>
           )}
 
-          <button
-            type="submit"
-            className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs"
-          >
-            <Zap className="w-4 h-4 text-emerald-300" />
-            <span>Generate PIN(s) — {formatKoboToNgn(totalSellingKobo)}</span>
-          </button>
+          {selectedProduct ? (
+            <ServiceAccessButton
+              product={{
+                ...selectedProduct,
+                selling_price: totalSellingKobo,
+              }}
+              onBuy={() => {
+                if (!isValidNigerianPhone(phone)) {
+                  setError('Please enter a valid Nigerian phone number for SMS delivery');
+                  return;
+                }
+                setIsPinModalOpen(true);
+              }}
+              className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+            />
+          ) : (
+            <button
+              type="submit"
+              disabled={true}
+              className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs opacity-50"
+            >
+              <Zap className="w-4 h-4 text-emerald-300" />
+              <span>Select an exam to proceed</span>
+            </button>
+          )}
         </form>
       </div>
 

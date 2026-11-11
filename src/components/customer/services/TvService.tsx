@@ -5,6 +5,7 @@ import { formatKoboToNgn, generateReference } from '../../../lib/formatters';
 import { PinConfirmModal } from '../../shared/PinConfirmModal';
 import { Tv, CheckCircle2, AlertCircle, Search, Zap } from 'lucide-react';
 import { ProductItem } from '../../../types';
+import ServiceAccessButton from '../../services/ServiceAccessButton';
 
 export const TvService: React.FC = () => {
   const { products, vend, balanceKobo, beneficiaries, addBeneficiary } = useWallet();
@@ -240,9 +241,22 @@ export const TvService: React.FC = () => {
                   }`}
                 >
                   <p className="text-xs font-bold">{b.name}</p>
-                  <span className="font-mono font-bold text-sm text-emerald-800">
-                    {formatKoboToNgn(b.selling_price)}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono font-bold text-sm text-emerald-800">
+                      {formatKoboToNgn(b.selling_price)}
+                    </span>
+                    <ServiceAccessButton
+                      product={b}
+                      onBuy={(product: ProductItem) => {
+                        setSelectedBouquetId(product.id);
+                        if (!verifiedName) {
+                          setError('Please verify smartcard/IUC number first');
+                          return;
+                        }
+                        setIsPinModalOpen(true);
+                      }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -261,14 +275,28 @@ export const TvService: React.FC = () => {
             </label>
           </div>
 
-          <button
-            type="submit"
-            disabled={!verifiedName || !selectedBouquet}
-            className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs"
-          >
-            <Zap className="w-4 h-4 text-emerald-300" />
-            <span>Subscribe {selectedBouquet ? formatKoboToNgn(selectedBouquet.selling_price) : ''}</span>
-          </button>
+          {selectedBouquet ? (
+            <ServiceAccessButton
+              product={selectedBouquet}
+              onBuy={() => {
+                if (!verifiedName) {
+                  setError('Please verify smartcard/IUC number first');
+                  return;
+                }
+                setIsPinModalOpen(true);
+              }}
+              className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+            />
+          ) : (
+            <button
+              type="submit"
+              disabled={true}
+              className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs"
+            >
+              <Zap className="w-4 h-4 text-emerald-300" />
+              <span>Select a bouquet package</span>
+            </button>
+          )}
         </form>
       </div>
 

@@ -13,6 +13,9 @@ interface AuthContextType {
   isAdmin: boolean;
   isOwner: boolean;
   adminSessionActive: boolean;
+  walletBalance: number;
+  suspended: boolean;
+  kycTier: number;
   switchRole: (role: Role) => void;
   login: (email: string, password?: string) => Promise<boolean>;
   loginWithGoogle: () => Promise<boolean>;
@@ -308,6 +311,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const role = currentUser?.role || 'customer';
   const isOwner = role === 'owner';
   const isAdmin = role === 'admin' || role === 'owner';
+  const walletBalance = currentUser?.wallet_balance ?? 0;
+  const suspended = Boolean(currentUser?.suspended);
+  const kycTier = currentUser?.tier ?? 1;
 
   return (
     <AuthContext.Provider
@@ -319,6 +325,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin,
         isOwner,
         adminSessionActive,
+        walletBalance,
+        suspended,
+        kycTier,
         switchRole,
         login,
         loginWithGoogle,

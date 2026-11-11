@@ -5,6 +5,7 @@ import { vtuProvider } from '../../../services/vtuProvider';
 import { formatNgn, formatKoboToNgn, generateReference } from '../../../lib/formatters';
 import { PinConfirmModal } from '../../shared/PinConfirmModal';
 import { Zap, CheckCircle2, AlertCircle, Search } from 'lucide-react';
+import ServiceAccessButton from '../../services/ServiceAccessButton';
 
 export const ElectricityService: React.FC = () => {
   const { vend, balanceKobo, beneficiaries, addBeneficiary } = useWallet();
@@ -321,14 +322,37 @@ export const ElectricityService: React.FC = () => {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={!verifiedName}
-            className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs"
-          >
-            <Zap className="w-4 h-4 text-emerald-300" />
-            <span>Generate Token & Pay {formatNgn(totalPayableNgn)}</span>
-          </button>
+          {verifiedName ? (
+            <ServiceAccessButton
+              product={{
+                id: `${disco}-${meterType}`,
+                name: `${selectedDiscoObj.name} Electricity`,
+                selling_price: totalPayableKobo,
+              }}
+              onBuy={() => {
+                if (!verifiedName) {
+                  setError('Please click "Verify Meter" before proceeding to payment');
+                  return;
+                }
+                if (amountNgn < 500) {
+                  setError('Minimum electricity recharge amount is ₦500');
+                  return;
+                }
+                setIsPinModalOpen(true);
+              }}
+              className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={handleVerify}
+              disabled={isVerifying || !meterNo}
+              className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs"
+            >
+              <Search className="w-4 h-4 text-slate-300" />
+              <span>Verify Meter Number to Proceed</span>
+            </button>
+          )}
         </form>
       </div>
 

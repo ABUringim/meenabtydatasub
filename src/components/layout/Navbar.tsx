@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 import { formatKoboToNgn } from '../../lib/formatters';
 import { NotificationBell } from '../shared/NotificationBell';
+import FundWalletModal from '../wallet/FundWalletModal';
+import KycBadge from '../common/KycBadge';
 import {
   Wallet,
   Menu,
@@ -26,6 +28,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { user, isAdmin, logout } = useAuth();
   const { balanceKobo } = useWallet();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [fundModalOpen, setFundModalOpen] = useState(false);
+
+  const handleOpenFund = () => {
+    if (onOpenFundWallet) {
+      onOpenFundWallet();
+    } else {
+      setFundModalOpen(true);
+    }
+  };
 
   const navLinks = [
     { id: 'landing', label: 'Home' },
@@ -80,10 +91,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               {/* Real-time Notification Bell */}
               <NotificationBell onNavigate={onNavigate} />
 
+              {/* KYC Status Badge */}
+              <KycBadge />
+
               {/* Wallet pill */}
               <button
-                onClick={onOpenFundWallet}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs transition-colors"
+                onClick={handleOpenFund}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs transition-colors cursor-pointer"
                 title="Click to Fund Wallet"
               >
                 <Wallet className="w-3.5 h-3.5 text-emerald-700" />
@@ -165,10 +179,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
               <button
                 onClick={() => {
-                  onOpenFundWallet();
+                  handleOpenFund();
                   setMobileMenuOpen(false);
                 }}
-                className="w-full py-2 px-3 text-xs font-semibold text-emerald-800 bg-emerald-50 rounded-lg border border-emerald-200 flex items-center justify-center gap-2"
+                className="w-full py-2 px-3 text-xs font-semibold text-emerald-800 bg-emerald-50 rounded-lg border border-emerald-200 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Wallet className="w-4 h-4 text-emerald-600" />
                 <span>Fund Wallet ({formatKoboToNgn(balanceKobo)})</span>
@@ -186,6 +200,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
       )}
+
+      {/* Navbar Fund Wallet Modal */}
+      <FundWalletModal
+        open={fundModalOpen}
+        onClose={() => setFundModalOpen(false)}
+        prefilledAmount={null}
+      />
     </header>
   );
 };

@@ -4,6 +4,7 @@ import { NetworkProvider } from '../../../types';
 import { detectNetwork, formatNgn, generateReference, isValidNigerianPhone } from '../../../lib/formatters';
 import { PinConfirmModal } from '../../shared/PinConfirmModal';
 import { Smartphone, Zap, AlertCircle } from 'lucide-react';
+import ServiceAccessButton from '../../services/ServiceAccessButton';
 
 export const AirtimeService: React.FC = () => {
   const { vend, balanceKobo, beneficiaries, addBeneficiary } = useWallet();
@@ -251,13 +252,25 @@ export const AirtimeService: React.FC = () => {
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs"
-          >
-            <Zap className="w-4 h-4 text-emerald-300" />
-            <span>Pay {formatNgn(payableNgn)}</span>
-          </button>
+          <ServiceAccessButton
+            product={{
+              id: `${network.toLowerCase()}-airtime`,
+              name: `${network} Airtime`,
+              selling_price: payableKobo,
+            }}
+            onBuy={() => {
+              if (!isValidNigerianPhone(phone)) {
+                setError('Please enter a valid 11-digit Nigerian phone number (e.g. 08031234567)');
+                return;
+              }
+              if (amountNgn < 50) {
+                setError('Minimum airtime amount is ₦50');
+                return;
+              }
+              setIsPinModalOpen(true);
+            }}
+            className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+          />
         </form>
       </div>
 

@@ -104,11 +104,23 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>+234 814 523 9871</span>
+                <a
+                  href="https://wa.me/2348145239871?text=Hello%20Sayyada%20Datasub%20Support"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-emerald-400 transition-colors"
+                >
+                  +234 814 523 9871 (WhatsApp)
+                </a>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>support@meenabtydatasub.com</span>
+                <a
+                  href="mailto:support@sayyadadatasub.shop"
+                  className="hover:text-emerald-400 transition-colors"
+                >
+                  support@sayyadadatasub.shop
+                </a>
               </li>
               <li className="pt-2">
                 <button

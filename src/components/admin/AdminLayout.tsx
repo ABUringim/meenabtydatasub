@@ -112,6 +112,29 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           )}
         </div>
 
+        {/* Global Admin Search Bar */}
+        <div className="hidden lg:flex items-center flex-1 max-w-md mx-6">
+          <div className="relative w-full">
+            <input
+              type="text"
+              placeholder="Quick search customers, transactions, or products (Press /)..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const val = (e.target as HTMLInputElement).value.trim();
+                  if (val.startsWith('SD_') || val.startsWith('SD-') || val.startsWith('SD_PAY')) {
+                    onSelectTab('transactions');
+                  } else if (val.includes('@') || /^\d{11}$/.test(val)) {
+                    onSelectTab('users');
+                  } else {
+                    onSelectTab('products');
+                  }
+                }
+              }}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-mono"
+            />
+          </div>
+        </div>
+
         {/* Center / Right controls */}
         <div className="flex items-center gap-3">
           {/* Quick Role preview switch for evaluator testing */}

@@ -4,6 +4,7 @@ import { NetworkProvider, ProductItem } from '../../../types';
 import { detectNetwork, formatKoboToNgn, generateReference, isValidNigerianPhone } from '../../../lib/formatters';
 import { PinConfirmModal } from '../../shared/PinConfirmModal';
 import { DataPricePredictorWidget } from './DataPricePredictorWidget';
+import ServiceAccessButton from '../../services/ServiceAccessButton';
 import { Wifi, Zap, AlertCircle } from 'lucide-react';
 
 export const DataService: React.FC = () => {
@@ -220,10 +221,21 @@ export const DataService: React.FC = () => {
                       {plan.category || 'SME'} · Validity: {plan.validity || '30 Days'}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex items-center gap-3">
                     <span className="font-mono font-bold text-sm text-emerald-800">
                       {formatKoboToNgn(plan.selling_price)}
                     </span>
+                    <ServiceAccessButton
+                      product={plan}
+                      onBuy={(p: ProductItem) => {
+                        setSelectedPlanId(p.id);
+                        if (!phone) {
+                          setError('Please enter a recipient phone number first');
+                          return;
+                        }
+                        setIsPinModalOpen(true);
+                      }}
+                    />
                   </div>
                 </div>
               ))}
@@ -269,14 +281,28 @@ export const DataService: React.FC = () => {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={!selectedPlan}
-            className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs"
-          >
-            <Zap className="w-4 h-4 text-emerald-300" />
-            <span>Pay {selectedPlan ? formatKoboToNgn(selectedPlan.selling_price) : ''}</span>
-          </button>
+          {selectedPlan ? (
+            <ServiceAccessButton
+              product={selectedPlan}
+              onBuy={() => {
+                if (!phone) {
+                  setError('Please enter a recipient phone number first');
+                  return;
+                }
+                setIsPinModalOpen(true);
+              }}
+              className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+            />
+          ) : (
+            <button
+              type="submit"
+              disabled={true}
+              className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs"
+            >
+              <Zap className="w-4 h-4 text-emerald-300" />
+              <span>Select a plan to proceed</span>
+            </button>
+          )}
         </form>
       </div>
 

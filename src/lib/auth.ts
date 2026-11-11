@@ -200,19 +200,32 @@ export const logOut = async (): Promise<void> => {
 
 /**
  * React hook to listen for Firebase Auth state changes using onAuthStateChanged().
- * Enforces verified-only session.
+ * Enforces verified-only session and returns user, walletBalance, suspended, kycTier.
  */
 export const useAuth = () => {
   const [user, setUser] = useState<FirebaseUser | null>(auth.currentUser);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number>(500000);
+  const [suspended, setSuspended] = useState<boolean>(false);
+  const [kycTier, setKycTier] = useState<number>(1);
 
   useEffect(() => {
+    let firestoreUnsub: (() => void) | null = null;
+
     const unsubscribe = onAuthStateChanged(
       auth,
       async (currentUser) => {
+        if (firestoreUnsub) {
+          firestoreUnsub();
+          firestoreUnsub = null;
+        }
+
         if (!currentUser) {
           setUser(null);
+          setWalletBalance(0);
+          setSuspended(false);
+          setKycTier(1);
           setLoading(false);
           return;
         }
@@ -227,9 +240,49 @@ export const useAuth = () => {
         if (!freshUser?.emailVerified) {
           await signOut(auth).catch(() => {});
           setUser(null);
-        } else {
-          setUser(freshUser);
+          setWalletBalance(0);
+          setSuspended(false);
+          setKycTier(1);
+          setLoading(false);
+          return;
         }
+
+        setUser(freshUser);
+
+        // Fetch / listen to user document in Firestore for wallet, suspension, and kyc tier
+        try {
+          const { doc, onSnapshot } = await import('firebase/firestore');
+          const { db } = await import('./firebase');
+          const userDocRef = doc(db, 'users', freshUser.uid);
+          firestoreUnsub = onSnapshot(
+            userDocRef,
+            (snap) => {
+              if (snap.exists()) {
+                const data = snap.data();
+                setWalletBalance(data.wallet_balance ?? 500000);
+                setSuspended(Boolean(data.suspended));
+                setKycTier(data.tier || data.kycTier || 1);
+              }
+            },
+            () => {
+              // Graceful fallback to local storage
+              try {
+                const { storage } = require('../services/storage');
+                const localUser = storage.getUser(freshUser.uid);
+                if (localUser) {
+                  setWalletBalance(localUser.wallet_balance ?? 500000);
+                  setSuspended(Boolean(localUser.suspended));
+                  setKycTier(localUser.tier || 1);
+                }
+              } catch {
+                // Ignore fallback error
+              }
+            }
+          );
+        } catch {
+          // Fallback if firestore module unavailable
+        }
+
         setLoading(false);
       },
       (err: any) => {
@@ -238,10 +291,15 @@ export const useAuth = () => {
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (firestoreUnsub) {
+        firestoreUnsub();
+      }
+    };
   }, []);
 
-  return { user, loading, error };
+  return { user, loading, error, walletBalance, suspended, kycTier };
 };
 
 export {

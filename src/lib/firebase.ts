@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 export const firebaseConfig = {
   apiKey: "AIzaSyCcnTFs6iv2W-9-GlguKbejwcx17mYiE9A",
@@ -12,6 +13,7 @@ export const firebaseConfig = {
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 // Enforce browser local session persistence across browser restarts and tab refreshes
 setPersistence(auth, browserLocalPersistence).catch((err) => {

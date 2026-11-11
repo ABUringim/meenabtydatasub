@@ -202,6 +202,43 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
         <SaveBeneficiaryBanner prompt={recentVendedRecipient} />
       )}
 
+      {/* 1-Tap Quick Repeat Recharge Bar */}
+      {transactions.length > 0 && transactions[0]?.status === 'success' && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-emerald-950">
+                1-Tap Repeat: {transactions[0].service.toUpperCase()} ({transactions[0].provider})
+              </p>
+              <p className="text-[11px] text-emerald-800">
+                Recipient: {transactions[0].recipient_details.phone || transactions[0].recipient_details.meterNo || transactions[0].recipient_details.smartcardNo || 'Default'} · {formatKoboToNgn(transactions[0].amount)}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const sMap: Record<string, string> = {
+                airtime: 'service-airtime',
+                data: 'service-data',
+                electricity: 'service-electricity',
+                tv: 'service-tv',
+                exam: 'service-exam',
+                remit: 'service-remit',
+                invoice: 'service-invoice',
+              };
+              onSelectService(sMap[transactions[0].service] || 'service-data');
+            }}
+            className="py-1.5 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer"
+          >
+            Repeat Now
+          </button>
+        </div>
+      )}
+
       {/* Quick Services Grid */}
       <div>
         <div className="flex items-center justify-between mb-3">

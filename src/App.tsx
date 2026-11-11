@@ -4,7 +4,7 @@ import { WalletProvider, useWallet } from './context/WalletContext';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { Sidebar } from './components/layout/Sidebar';
-import { FundWalletModal } from './components/customer/FundWalletModal';
+import { FundWalletModal } from './components/wallet/FundWalletModal';
 import { ReceiptModal } from './components/shared/ReceiptModal';
 import { storage } from './services/storage';
 
@@ -15,6 +15,11 @@ import { RatesPage } from './components/public/RatesPage';
 import { ReferenceLookupPage } from './components/public/ReferenceLookupPage';
 import { BlogPage } from './components/public/BlogPage';
 import { AuthPages } from './components/public/AuthPages';
+import { SuccessPage } from './pages/SuccessPage';
+import { FailurePage } from './pages/FailurePage';
+import { NotFoundPage } from './components/public/NotFoundPage';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { FloatingWhatsApp } from './components/common/FloatingWhatsApp';
 
 // Customer Services
 import { CustomerDashboard } from './components/customer/CustomerDashboard';
@@ -54,31 +59,43 @@ function MainApp() {
   const [currentView, setCurrentView] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname;
-      if (path === '/dashboard' || path === '/customer-dashboard') return 'customer-dashboard';
-      if (path === '/login' || path === '/auth') return 'login';
-      if (path === '/register') return 'register';
+      const hash = window.location.hash || '';
+      if (path === '/success' || hash.includes('/success')) return 'success';
+      if (path === '/failure' || hash.includes('/failure')) return 'failure';
+      if (path === '/dashboard' || path === '/customer-dashboard' || hash.includes('/dashboard')) return 'customer-dashboard';
+      if (path === '/login' || path === '/auth' || hash.includes('/login')) return 'login';
+      if (path === '/register' || hash.includes('/register')) return 'register';
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('verified') === '1') return 'login';
     }
     return 'landing';
   });
 
-  // Keep browser URL synchronized
+  // Keep browser URL synchronized (standard + hash routing aware)
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname;
-      if (path === '/dashboard' || path === '/customer-dashboard') {
+      const hash = window.location.hash || '';
+      if (path === '/success' || hash.includes('/success')) {
+        setCurrentView('success');
+      } else if (path === '/failure' || hash.includes('/failure')) {
+        setCurrentView('failure');
+      } else if (path === '/dashboard' || path === '/customer-dashboard' || hash.includes('/dashboard')) {
         setCurrentView('customer-dashboard');
-      } else if (path === '/login' || path === '/auth') {
+      } else if (path === '/login' || path === '/auth' || hash.includes('/login')) {
         setCurrentView('login');
-      } else if (path === '/register') {
+      } else if (path === '/register' || hash.includes('/register')) {
         setCurrentView('register');
-      } else if (path === '/' || path === '') {
+      } else if (path === '/' || path === '' || hash === '#/' || hash === '') {
         setCurrentView('landing');
       }
     };
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
   }, []);
 
   const [hasVerifiedNotice, setHasVerifiedNotice] = useState<boolean>(() => {
@@ -103,6 +120,8 @@ function MainApp() {
         'login': '/login',
         'register': '/register',
         'landing': '/',
+        'success': '/success',
+        'failure': '/failure',
       };
       const newPath = pathMap[view];
       if (newPath && window.location.pathname !== newPath) {
@@ -266,6 +285,12 @@ function MainApp() {
             {currentView === 'blog' && (
               <BlogPage onNavigateToService={handleOpenQuickService} />
             )}
+            {currentView === 'success' && (
+              <SuccessPage onNavigate={handleNavigate} />
+            )}
+            {currentView === 'failure' && (
+              <FailurePage onNavigate={handleNavigate} />
+            )}
             {currentView === 'verify-email' && (
               <VerifyEmailPage
                 email={verifyEmailTarget || user?.email || 'your email'}
@@ -356,6 +381,9 @@ function MainApp() {
         )}
       </div>
 
+      {/* Floating WhatsApp Support Desk */}
+      <FloatingWhatsApp />
+
       {/* Global Wallet Funding Modal */}
       <FundWalletModal
         isOpen={isFundWalletOpen}
@@ -377,10 +405,12 @@ function MainApp() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <WalletProvider>
-        <MainApp />
-      </WalletProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <WalletProvider>
+          <MainApp />
+        </WalletProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

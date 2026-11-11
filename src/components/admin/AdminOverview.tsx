@@ -120,6 +120,41 @@ export const AdminOverview: React.FC<{ onNavigateTab: (tab: string) => void }> =
         </div>
       </div>
 
+      {/* Quick Operations Actions Strip */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">
+          Quick Actions:
+        </span>
+        <button
+          onClick={() => onNavigateTab('products')}
+          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-emerald-500/40 rounded-xl transition-colors font-medium shrink-0 flex items-center gap-1.5 cursor-pointer"
+        >
+          <Zap className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Add Product</span>
+        </button>
+        <button
+          onClick={() => onNavigateTab('transactions')}
+          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-blue-500/40 rounded-xl transition-colors font-medium shrink-0 flex items-center gap-1.5 cursor-pointer"
+        >
+          <Clock className="w-3.5 h-3.5 text-blue-400" />
+          <span>View Stuck Orders</span>
+        </button>
+        <button
+          onClick={() => onNavigateTab('cms')}
+          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-purple-500/40 rounded-xl transition-colors font-medium shrink-0 flex items-center gap-1.5 cursor-pointer"
+        >
+          <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
+          <span>Publish Post</span>
+        </button>
+        <button
+          onClick={() => onNavigateTab('users')}
+          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-amber-500/40 rounded-xl transition-colors font-medium shrink-0 flex items-center gap-1.5 cursor-pointer"
+        >
+          <Wallet className="w-3.5 h-3.5 text-amber-400" />
+          <span>Adjust Customer Wallet</span>
+        </button>
+      </div>
+
       {/* System Alert Banners */}
       {isFloatLow && (
         <div className="p-4 bg-amber-950/60 border border-amber-800 rounded-2xl flex items-start justify-between gap-3 text-xs text-amber-200">

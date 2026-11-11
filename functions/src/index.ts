@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import axios from 'axios';
 import { bigiSubProvider } from './vtu/providers/bigisub';
 import { BIGISUB_TOKEN_SECRET, BIGISUB_BASE_URL } from './config/secrets';
+import { PLAN_CODE_MAP } from './vtu/planCodeMap';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -38,7 +39,7 @@ export const initializePayment = functions.https.onCall(async (data, context) =>
         email,
         amount: amountKobo,
         reference,
-        callback_url: `${process.env.APP_URL || 'https://sayyadadatasub.com'}/payment-callback`,
+        callback_url: `${process.env.APP_URL || 'https://sayyadadatasub.shop'}/payment-callback`,
         metadata: {
           userId: context.auth.uid,
           custom_fields: [{ display_name: 'Platform', variable_name: 'platform', value: 'Sayyada Datasub' }],
@@ -172,6 +173,79 @@ export const purchaseService = functions.https.onCall(async (data, context) => {
   const txnRef = db.collection('transactions').doc(reference);
   const userRef = db.collection('users').doc(userId);
   const ledgerDebitRef = db.collection('wallet_ledger').doc();
+
+  // Pre-flight check: Load product from Firestore for plan code validation
+  const targetProductId =
+    data.productId ||
+    data.product_id ||
+    recipientDetails?.productId ||
+    (service === 'airtime' ? `${provider.toLowerCase()}-airtime` : null) ||
+    (service === 'electricity' ? `${provider.toLowerCase()}-${recipientDetails?.meterType || 'prepaid'}` : null) ||
+    recipientDetails?.planCode?.toLowerCase() ||
+    data.planId;
+
+  let product: any = null;
+  if (targetProductId) {
+    const pDoc = await db.collection('products').doc(targetProductId).get();
+    if (pDoc.exists) {
+      product = { id: pDoc.id, ...pDoc.data() };
+    }
+  }
+
+  if (!product && recipientDetails?.planCode) {
+    const qSnap = await db
+      .collection('products')
+      .where('provider_plan_code', '==', recipientDetails.planCode)
+      .limit(1)
+      .get();
+    if (!qSnap.empty) {
+      product = { id: qSnap.docs[0].id, ...qSnap.docs[0].data() };
+    }
+  }
+
+  if (product) {
+    if (product.active !== true) {
+      throw new functions.https.HttpsError('failed-precondition', 'Product unavailable');
+    }
+
+    const expectedCode = (PLAN_CODE_MAP as Record<string, string>)[product.id];
+    const actualCode = product.provider_plan_code;
+
+    // Fail-fast: refuse to vend on a misconfigured plan
+    if (!expectedCode) {
+      await db.collection('admin_activity').add({
+        actorId: 'system',
+        actorName: 'planCodeMap_check',
+        action: 'plan_code_missing_in_map',
+        target: `products/${product.id}`,
+        before: { provider_plan_code: actualCode },
+        after: null,
+        severity: 'high',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'This product is temporarily unavailable. Please try again later.'
+      );
+    }
+
+    if (expectedCode !== actualCode) {
+      await db.collection('admin_activity').add({
+        actorId: 'system',
+        actorName: 'planCodeMap_check',
+        action: 'plan_code_mismatch',
+        target: `products/${product.id}`,
+        before: { expected: expectedCode, actual: actualCode },
+        after: null,
+        severity: 'critical',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'This product is temporarily unavailable. Please try again later.'
+      );
+    }
+  }
 
   // 1. Atomic Wallet Deduction & Idempotency check inside Firestore Transaction
   let previousBalance = 0;

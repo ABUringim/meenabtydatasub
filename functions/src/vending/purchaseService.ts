@@ -8,6 +8,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { vtuProvider } from '../vtu/vtuProvider';
 import { bigisubTokenSecret } from '../config/secrets';
+import { PLAN_CODE_MAP } from '../vtu/planCodeMap';
 
 const db = admin.firestore();
 
@@ -34,6 +35,79 @@ export const purchaseService = functions
       );
     }
 
+    // Pre-flight check: Load product from Firestore for plan code validation
+    const targetProductId =
+      data.productId ||
+      data.product_id ||
+      recipientDetails?.productId ||
+      (service === 'airtime' ? `${provider.toLowerCase()}-airtime` : null) ||
+      (service === 'electricity' ? `${provider.toLowerCase()}-${recipientDetails?.meterType || 'prepaid'}` : null) ||
+      recipientDetails?.planCode?.toLowerCase() ||
+      data.planId;
+
+    let product: any = null;
+    if (targetProductId) {
+      const pDoc = await db.collection('products').doc(targetProductId).get();
+      if (pDoc.exists) {
+        product = { id: pDoc.id, ...pDoc.data() };
+      }
+    }
+
+    if (!product && recipientDetails?.planCode) {
+      const qSnap = await db
+        .collection('products')
+        .where('provider_plan_code', '==', recipientDetails.planCode)
+        .limit(1)
+        .get();
+      if (!qSnap.empty) {
+        product = { id: qSnap.docs[0].id, ...qSnap.docs[0].data() };
+      }
+    }
+
+    if (product) {
+      if (product.active !== true) {
+        throw new functions.https.HttpsError('failed-precondition', 'Product unavailable');
+      }
+
+      const expectedCode = (PLAN_CODE_MAP as Record<string, string>)[product.id];
+      const actualCode = product.provider_plan_code;
+
+      // Fail-fast: refuse to vend on a misconfigured plan
+      if (!expectedCode) {
+        await db.collection('admin_activity').add({
+          actorId: 'system',
+          actorName: 'planCodeMap_check',
+          action: 'plan_code_missing_in_map',
+          target: `products/${product.id}`,
+          before: { provider_plan_code: actualCode },
+          after: null,
+          severity: 'high',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'This product is temporarily unavailable. Please try again later.'
+        );
+      }
+
+      if (expectedCode !== actualCode) {
+        await db.collection('admin_activity').add({
+          actorId: 'system',
+          actorName: 'planCodeMap_check',
+          action: 'plan_code_mismatch',
+          target: `products/${product.id}`,
+          before: { expected: expectedCode, actual: actualCode },
+          after: null,
+          severity: 'critical',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'This product is temporarily unavailable. Please try again later.'
+        );
+      }
+    }
+
     // 1. Atomic Wallet Deduction & Idempotency check inside Firestore Transaction
     let previousBalance = 0;
     let balanceAfterDebit = 0;
@@ -50,6 +124,14 @@ export const purchaseService = functions
 
         const userData = userDoc.data();
         if (userData?.suspended) throw new Error('Account suspended');
+
+        // Enforce KYC Tier Entitlement check
+        const requiredKycTier =
+          product?.requiredKycTier ?? (service === 'remit' || service === 'invoice' ? 2 : 1);
+        const userKycTier = userData?.tier || userData?.kycTier || 1;
+        if (userKycTier < requiredKycTier) {
+          throw new Error('KYC_TIER_REQUIRED');
+        }
 
         previousBalance = userData?.wallet_balance || 0;
         if (previousBalance < amountKobo) {
@@ -98,6 +180,9 @@ export const purchaseService = functions
       if (err.message === 'DUPLICATE_IDEMPOTENCY_KEY') {
         const existing = (await txnRef.get()).data();
         return { status: existing?.status, reference };
+      }
+      if (err.message === 'KYC_TIER_REQUIRED') {
+        throw new functions.https.HttpsError('permission-denied', 'This service requires Tier 2 identity verification.');
       }
       if (err.message === 'INSUFFICIENT_FUNDS') {
         throw new functions.https.HttpsError('failed-precondition', 'Insufficient wallet balance.');

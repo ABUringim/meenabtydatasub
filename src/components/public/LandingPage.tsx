@@ -4,6 +4,7 @@ import { detectNetwork, formatNgn, generateReference, isValidNigerianPhone } fro
 import { paystack } from '../../services/paystack';
 import { vtuProvider } from '../../services/vtuProvider';
 import { useWallet } from '../../context/WalletContext';
+import { usePosts } from '../../hooks/usePosts';
 import {
   Smartphone,
   Wifi,
@@ -36,6 +37,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenQuickService,
 }) => {
   const { setActiveReceiptTxn } = useWallet();
+  const { posts } = usePosts();
+
+  const publishedBlogPosts = posts
+    .filter((p) => p.status === 'published' || p.published === true)
+    .slice(0, 3);
 
   // Quick Buy Guest Widget State
   const [quickServiceType, setQuickServiceType] = useState<'airtime' | 'data'>('airtime');
@@ -169,7 +175,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {/* CTAs */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
-                onClick={() => onNavigate('customer-dashboard')}
+                onClick={() => onNavigate('register')}
                 className="py-3 px-6 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2"
               >
                 <span>Open Free Account</span>
@@ -469,68 +475,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div
-            onClick={() => onNavigate('blog')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
-          >
-            <div>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                Telecom &amp; Data
-              </span>
-              <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors mt-2 leading-snug">
-                How to Save up to 40% on MTN, Airtel &amp; Glo SME Data in Nigeria
-              </h3>
-              <p className="text-xs text-slate-600 mt-1.5 line-clamp-2">
-                Understanding technical differences between SME Data and direct retail rack rates.
-              </p>
+          {publishedBlogPosts.length === 0 ? (
+            <div className="col-span-3 bg-white p-8 rounded-2xl border border-slate-200 text-center text-xs text-slate-500">
+              New insights and guides published in Admin CMS will appear live here.
             </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-emerald-800">
-              <span>Read Guide</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </div>
-
-          <div
-            onClick={() => onNavigate('blog')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
-          >
-            <div>
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                Electricity Bills
-              </span>
-              <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors mt-2 leading-snug">
-                Prepaid Meter Tokens: Solving Common Keypad Error Codes
-              </h3>
-              <p className="text-xs text-slate-600 mt-1.5 line-clamp-2">
-                A guide for homeowners and tenants dealing with IKEDC, KEDCO, and AEDC prepaid meters.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-emerald-800">
-              <span>Read Guide</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </div>
-
-          <div
-            onClick={() => onNavigate('blog')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
-          >
-            <div>
-              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
-                Education &amp; Exams
-              </span>
-              <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors mt-2 leading-snug">
-                The Complete 2026 Guide to WAEC, NECO &amp; JAMB UTME e-PIN Vending
-              </h3>
-              <p className="text-xs text-slate-600 mt-1.5 line-clamp-2">
-                Everything you need to know about purchasing and verifying official WAEC result checker PINs.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-emerald-800">
-              <span>Read Guide</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </div>
+          ) : (
+            publishedBlogPosts.map((post) => (
+              <div
+                key={post.id}
+                onClick={() => onNavigate('blog')}
+                className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+              >
+                <div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    {post.category || 'Telecom & Data'}
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors mt-2 leading-snug">
+                    {post.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1.5 line-clamp-2">
+                    {post.excerpt || post.content?.slice(0, 140) || ''}
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-emerald-800">
+                  <span>Read Guide</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
 
