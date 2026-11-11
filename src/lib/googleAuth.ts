@@ -129,7 +129,7 @@ export const mapGoogleAuthError = (err: any): GoogleAuthErrorInfo => {
     case 'auth/unauthorized-domain':
       return {
         code,
-        message: 'This preview domain is not yet authorized in Firebase OAuth settings. Please use the Google account selector to continue.',
+        message: 'This domain is not authorized for Google Sign-In in Firebase Console. Please add this domain under Firebase Authentication → Settings → Authorized domains.',
         isSilent: false,
         isPopupBlocked: false,
         isAccountExistsDifferentCredential: false,
@@ -226,6 +226,8 @@ export const ensureUserProfileClient = async (user: FirebaseUser): Promise<{ rol
  */
 export const signInWithGoogle = async (): Promise<FirebaseUser | null> => {
   const provider = new GoogleAuthProvider();
+  provider.addScope('email');
+  provider.addScope('profile');
   provider.setCustomParameters({ prompt: 'select_account' });
 
   try {

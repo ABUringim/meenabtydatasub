@@ -18,7 +18,7 @@ interface AuthContextType {
   kycTier: number;
   switchRole: (role: Role) => void;
   login: (email: string, password?: string) => Promise<boolean>;
-  loginWithGoogle: (email?: string, name?: string) => Promise<boolean>;
+  loginWithGoogle: () => Promise<boolean>;
   adminLogin: (email: string, password?: string, totpCode?: string) => Promise<{ success: boolean; requires2fa?: boolean; error?: string }>;
   logout: () => Promise<void>;
   adminLogout: () => void;
@@ -212,30 +212,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  const loginWithGoogle = async (googleEmail?: string, googleName?: string): Promise<boolean> => {
-    let googleUser: FirebaseUser | null = null;
-
-    if (!googleEmail) {
-      try {
-        googleUser = await fbSignInWithGoogle();
-      } catch (err: any) {
-        // If the error indicates unauthorized domain or popup blockage, throw so UI can open GoogleAccountModal
-        console.warn('Direct Google popup warning:', err);
-        throw err;
-      }
-
-      if (!googleUser) {
-        // User closed the popup window without completing authentication
-        return false;
-      }
+  const loginWithGoogle = async (): Promise<boolean> => {
+    const googleUser = await fbSignInWithGoogle();
+    if (!googleUser || !googleUser.email) {
+      return false;
     }
 
-    const targetEmail = googleUser?.email || googleEmail || 'aburingimmultipurposeco@gmail.com';
-    const targetName =
-      googleUser?.displayName ||
-      googleName ||
-      (targetEmail.includes('@') ? targetEmail.split('@')[0].toUpperCase() : 'CUSTOMER');
-    const targetUid = googleUser?.uid || `usr_google_${targetEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const targetEmail = googleUser.email;
+    const targetName = googleUser.displayName || targetEmail.split('@')[0].toUpperCase();
+    const targetUid = googleUser.uid;
 
     const allUsers = storage.getUsers();
     let found = allUsers.find(
