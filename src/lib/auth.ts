@@ -206,7 +206,7 @@ export const useAuth = () => {
   const [user, setUser] = useState<FirebaseUser | null>(auth.currentUser);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [walletBalance, setWalletBalance] = useState<number>(500000);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
   const [suspended, setSuspended] = useState<boolean>(false);
   const [kycTier, setKycTier] = useState<number>(1);
 
@@ -259,7 +259,7 @@ export const useAuth = () => {
             (snap) => {
               if (snap.exists()) {
                 const data = snap.data();
-                setWalletBalance(data.wallet_balance ?? 500000);
+                setWalletBalance(data.wallet_balance ?? 0);
                 setSuspended(Boolean(data.suspended));
                 setKycTier(data.tier || data.kycTier || 1);
               }
@@ -270,7 +270,7 @@ export const useAuth = () => {
                 const { storage } = require('../services/storage');
                 const localUser = storage.getUser(freshUser.uid);
                 if (localUser) {
-                  setWalletBalance(localUser.wallet_balance ?? 500000);
+                  setWalletBalance(localUser.wallet_balance ?? 0);
                   setSuspended(Boolean(localUser.suspended));
                   setKycTier(localUser.tier || 1);
                 }

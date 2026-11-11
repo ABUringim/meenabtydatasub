@@ -712,7 +712,7 @@ class StorageService {
   }
 
   getCurrentUserId(): string {
-    return this.getItem<string>(STORAGE_KEYS.CURRENT_USER_ID, DEFAULT_CUSTOMER.uid);
+    return this.getItem<string>(STORAGE_KEYS.CURRENT_USER_ID, '');
   }
 
   setCurrentUserId(uid: string): void {
@@ -985,11 +985,12 @@ class StorageService {
 
   // --- Customer Spending Analytics ---
   getSpending(userId: string): CustomerSpending[] {
-    const stored = this.getItem<CustomerSpending[]>(STORAGE_KEYS.SPENDING, []);
-    if (stored.length > 0) return stored;
+    if (!userId) return [];
 
-    // Dynamically calculate from successful user transactions if not present
+    // Dynamically calculate from successful user transactions
     const txns = this.getUserTransactions(userId).filter((t) => t.status === 'success');
+    if (txns.length === 0) return [];
+
     const map = new Map<ServiceCategory, { total: number; count: number; lastDate: string }>();
 
     for (const t of txns) {
@@ -1007,7 +1008,7 @@ class StorageService {
       totalSpent: val.total,
       transactionCount: val.count,
       lastTransactionAt: val.lastDate,
-      updatedAt: new Date().toISOString(),
+      updatedAt: val.lastDate,
     }));
 
     return aggregated;
