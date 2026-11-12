@@ -2,7 +2,11 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ override: true });
+process.env.VITE_FIREBASE_PROJECT_ID = 'meenabtydatasub';
+process.env.VITE_FIREBASE_AUTH_DOMAIN = 'meenabtydatasub.firebaseapp.com';
+process.env.VITE_FIREBASE_STORAGE_BUCKET = 'meenabtydatasub.appspot.com';
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
