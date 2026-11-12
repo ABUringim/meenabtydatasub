@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react';
-import { useAuth } from '../lib/auth';
+import React, { useEffect, useState } from 'react';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { useAuth } from '../context/AuthContext';
 
 interface AuthRouteProps {
   children: React.ReactNode;
@@ -10,15 +12,23 @@ export const AuthRoute: React.FC<AuthRouteProps> = ({
   children,
   onRedirectToDashboard,
 }) => {
-  const { user, loading } = useAuth();
+  const { loading: contextLoading } = useAuth();
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (!loading && user) {
-      onRedirectToDashboard();
-    }
-  }, [loading, user, onRedirectToDashboard]);
+    const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
+      setChecking(false);
+      if (user && user.emailVerified) {
+        onRedirectToDashboard();
+      }
+    });
 
-  if (loading) {
+    return () => unsubscribe();
+  }, [onRedirectToDashboard]);
+
+  const isLoading = checking || contextLoading;
+
+  if (isLoading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center p-8">
         <div className="flex flex-col items-center gap-3">
@@ -29,7 +39,7 @@ export const AuthRoute: React.FC<AuthRouteProps> = ({
     );
   }
 
-  if (user) {
+  if (auth.currentUser && auth.currentUser.emailVerified) {
     return null;
   }
 

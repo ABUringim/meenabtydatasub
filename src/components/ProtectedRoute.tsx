@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
-import { useAuth } from '../lib/auth';
-import { signOut } from 'firebase/auth';
+import React, { useEffect, useState } from 'react';
+import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
 import { auth } from '../lib/firebase';
+import { useAuth } from '../context/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,26 +14,28 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   onRedirectToAuth,
   onRedirectToVerify,
 }) => {
-  const { user, loading } = useAuth();
-  const isGoogleAccount =
-    Boolean(user?.providerData?.some((p: any) => p.providerId === 'google.com')) ||
-    user?.email === 'aburingimmultipurposeco@gmail.com';
-  const isVerified = Boolean(user?.emailVerified || isGoogleAccount);
+  const { loading: contextLoading } = useAuth();
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (!loading) {
+    const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
+      setChecking(false);
       if (!user) {
-        // Not logged in -> show auth screen
+        // Strictly logged out -> redirect to /auth (login)
         onRedirectToAuth();
-      } else if (!isVerified) {
-        // Logged in but unverified email/password account -> force logout and show verification screen
+      } else if (!user.emailVerified) {
+        // Logged in but unverified -> sign out and redirect to verification
         signOut(auth).catch(() => {});
         onRedirectToVerify(user.email || undefined);
       }
-    }
-  }, [loading, user, isVerified, onRedirectToAuth, onRedirectToVerify]);
+    });
 
-  if (loading) {
+    return () => unsubscribe();
+  }, [onRedirectToAuth, onRedirectToVerify]);
+
+  const isLoading = checking || contextLoading;
+
+  if (isLoading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center p-8">
         <div className="flex flex-col items-center gap-3">
@@ -44,7 +46,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  if (!user || !isVerified) {
+  // Strict check: No user or unverified user can EVER see dashboard children
+  if (!auth.currentUser || !auth.currentUser.emailVerified) {
     return null;
   }
 

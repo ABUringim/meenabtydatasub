@@ -36,9 +36,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [adminSessionActive, setAdminSessionActive] = useState<boolean>(true);
+  const [adminSessionActive, setAdminSessionActive] = useState<boolean>(false);
 
-  // Sync Firebase Auth state changes & real-time Firestore user document
+  // Sync Firebase Auth state changes
   useEffect(() => {
     let firestoreUnsub: (() => void) | null = null;
 
@@ -50,59 +50,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (!fbUser) {
         setFirebaseUser(null);
-        // Only keep admin session if explicitly loaded
-        const currentUid = storage.getCurrentUserId();
-        const found = currentUid ? storage.getUser(currentUid) : null;
-        if (found && (found.role === 'admin' || found.role === 'owner')) {
-          setCurrentUser(found);
-          const isExpired = storage.isAdminSessionExpired();
-          setAdminSessionActive(!isExpired);
-        } else {
-          setCurrentUser(null);
-        }
+        setCurrentUser(null);
+        storage.setCurrentUserId('');
+        setAdminSessionActive(false);
+        setLoading(false);
+        return;
+      }
+
+      // Block unverified users from authenticated state
+      if (!fbUser.emailVerified) {
+        await signOut(auth).catch(() => {});
+        setFirebaseUser(null);
+        setCurrentUser(null);
+        storage.setCurrentUserId('');
+        setAdminSessionActive(false);
         setLoading(false);
         return;
       }
 
       setFirebaseUser(fbUser);
+      storage.setCurrentUserId(fbUser.uid);
 
-      // Listen directly to user profile in Firestore
       try {
         const { doc, onSnapshot, setDoc } = await import('firebase/firestore');
         const { db } = await import('../lib/firebase');
-        const userRef = doc(db, 'users', fbUser.uid);
+        const userDocRef = doc(db, 'users', fbUser.uid);
 
         firestoreUnsub = onSnapshot(
-          userRef,
+          userDocRef,
           async (snap) => {
             if (snap.exists()) {
               const data = snap.data();
+              const profileRole = (data.role as Role) || 'customer';
               const profile: UserProfile = {
                 uid: fbUser.uid,
                 email: fbUser.email || data.email || '',
-                phone: data.phone || fbUser.phoneNumber || '',
-                name: data.name || data.displayName || fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0].toUpperCase() : 'CUSTOMER'),
-                tier: data.tier || data.kycTier || 1,
+                phone: data.phone || fbUser.phoneNumber || '08123456789',
+                name: data.name || fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0].toUpperCase() : 'CUSTOMER'),
+                tier: data.tier || 1,
                 kyc_status: data.kyc_status || 'unverified',
-                role: data.role || 'customer',
-                wallet_balance: data.wallet_balance ?? data.walletBalance ?? 0,
-                ledger_balance: data.ledger_balance ?? data.wallet_balance ?? 0,
+                role: profileRole,
+                wallet_balance: data.wallet_balance || 0,
+                ledger_balance: data.ledger_balance || 0,
                 hasPin: Boolean(data.hasPin),
                 twoFactorEnabled: Boolean(data.twoFactorEnabled),
-                virtual_account: data.virtual_account,
                 created_at: data.created_at || new Date().toISOString(),
                 updated_at: data.updated_at || new Date().toISOString(),
                 suspended: Boolean(data.suspended),
               };
-              storage.setCurrentUserId(fbUser.uid);
               setCurrentUser(profile);
-              setLoading(false);
+              if (profileRole === 'admin' || profileRole === 'owner') {
+                setAdminSessionActive(!storage.isAdminSessionExpired());
+              }
             } else {
-              // Brand new user: initialize in Firestore with strictly 0 balance
-              const freshProfile: UserProfile = {
+              // Create user document in Firestore if not existing yet (e.g. first Google sign in)
+              const newProfile: UserProfile = {
                 uid: fbUser.uid,
                 email: fbUser.email || '',
-                phone: fbUser.phoneNumber || '',
+                phone: fbUser.phoneNumber || '08123456789',
                 name: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0].toUpperCase() : 'CUSTOMER'),
                 tier: 1,
                 kyc_status: 'unverified',
@@ -115,46 +120,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 updated_at: new Date().toISOString(),
                 suspended: false,
               };
-
-              await setDoc(userRef, {
-                ...freshProfile,
-                wallet_balance: 0,
-                ledger_balance: 0,
-                createdAt: new Date().toISOString(),
-              }).catch((err) => {
-                console.warn('Firestore user profile initialization notice:', err);
+              await setDoc(userDocRef, newProfile).catch((err) => {
+                console.warn('Initial user profile write notice:', err);
               });
-
-              storage.setCurrentUserId(fbUser.uid);
-              setCurrentUser(freshProfile);
-              setLoading(false);
+              setCurrentUser(newProfile);
             }
+            setLoading(false);
           },
           (err) => {
-            console.warn('Firestore onSnapshot listener error:', err);
-            // Fallback in-memory profile strictly with 0 balance
-            const profile: UserProfile = {
-              uid: fbUser.uid,
-              email: fbUser.email || '',
-              phone: fbUser.phoneNumber || '',
-              name: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0].toUpperCase() : 'CUSTOMER'),
-              tier: 1,
-              kyc_status: 'unverified',
-              role: 'customer',
-              wallet_balance: 0,
-              ledger_balance: 0,
-              hasPin: false,
-              twoFactorEnabled: false,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              suspended: false,
-            };
-            setCurrentUser(profile);
+            console.warn('Firestore snapshot error:', err);
             setLoading(false);
           }
         );
       } catch (e) {
-        console.warn('Could not initialize firestore snapshot listener:', e);
+        console.warn('Error setting up firestore listener:', e);
         setLoading(false);
       }
     });
@@ -187,24 +166,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [touchSession]);
 
   const switchRole = (newRole: Role) => {
-    const allUsers = storage.getUsers();
-    let target = allUsers.find((u) => u.role === newRole);
-    if (!target) {
-      target = allUsers[0];
-    }
-    storage.setCurrentUserId(target.uid);
+    if (!currentUser) return;
+    const updated = { ...currentUser, role: newRole };
+    setCurrentUser(updated);
     storage.touchAdminSession();
     setAdminSessionActive(true);
-    setCurrentUser(target);
-    storage.recordAuditLog(
-      target.uid,
-      target.email,
-      'ROLE_SWITCH_PREVIEW',
-      `Switched to role: ${newRole}`,
-      null,
-      null,
-      target.role
-    );
   };
 
   const login = async (email: string, password = 'password123'): Promise<boolean> => {
@@ -214,87 +180,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogle = async (): Promise<boolean> => {
     const googleUser = await fbSignInWithGoogle();
-    if (!googleUser || !googleUser.email) {
-      return false;
-    }
-
-    const targetEmail = googleUser.email;
-    const targetName = googleUser.displayName || targetEmail.split('@')[0].toUpperCase();
-    const targetUid = googleUser.uid;
-
-    const allUsers = storage.getUsers();
-    let found = allUsers.find(
-      (u) => u.email.toLowerCase() === targetEmail.toLowerCase() || u.uid === targetUid
-    );
-
-    if (!found) {
-      found = {
-        uid: targetUid,
-        email: targetEmail,
-        phone: (googleUser as any)?.phoneNumber || '08145239871',
-        name: targetName,
-        tier: 1,
-        kyc_status: 'unverified',
-        role: 'customer',
-        wallet_balance: 0,
-        ledger_balance: 0,
-        hasPin: true,
-        twoFactorEnabled: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        suspended: false,
-      };
-      allUsers.push(found);
-      localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
-    } else {
-      found.updated_at = new Date().toISOString();
-      if (!found.name || found.name === 'Customer') {
-        found.name = targetName;
-      }
-      localStorage.setItem('meenabty_users_v2', JSON.stringify(allUsers));
-    }
-
-    storage.setCurrentUserId(found.uid);
-    setCurrentUser(found);
-
-    // Sync directly to Firestore users/{uid}
-    try {
-      const { doc, setDoc, getDoc } = await import('firebase/firestore');
-      const { db } = await import('../lib/firebase');
-      const userRef = doc(db, 'users', found.uid);
-      const snap = await getDoc(userRef).catch(() => null);
-      if (!snap || !snap.exists()) {
-        await setDoc(userRef, {
-          uid: found.uid,
-          email: found.email,
-          phone: found.phone || '08145239871',
-          name: found.name,
-          tier: 1,
-          kyc_status: 'unverified',
-          role: 'customer',
-          wallet_balance: 0,
-          ledger_balance: 0,
-          hasPin: true,
-          twoFactorEnabled: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          suspended: false,
-        }).catch((err) => console.warn('Firestore user profile notice:', err));
-      }
-    } catch {
-      // Local session remains active even if Firestore offline
-    }
-
-    storage.recordAuditLog(
-      found.uid,
-      found.email,
-      'GOOGLE_SIGNIN_SUCCESS',
-      `Authenticated via Google Sign-In (${found.email})`,
-      null,
-      null,
-      found.role
-    );
-
+    if (!googleUser) return false;
+    setFirebaseUser(googleUser);
+    storage.setCurrentUserId(googleUser.uid);
     return true;
   };
 

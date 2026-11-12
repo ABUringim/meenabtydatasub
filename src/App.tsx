@@ -52,7 +52,7 @@ import { AdminLogin } from './components/admin/AdminLogin';
 import { AlertTriangle } from 'lucide-react';
 
 function MainApp() {
-  const { user, isAdmin } = useAuth();
+  const { user, firebaseUser, loading: authLoading, isAdmin } = useAuth();
   const { activeReceiptTxn, setActiveReceiptTxn, toastMessage } = useWallet();
   const settings = storage.getSettings();
 
@@ -70,6 +70,15 @@ function MainApp() {
     }
     return 'landing';
   });
+
+  // Strict route guard: redirect unauthenticated or unverified users attempting to access /dashboard to /login
+  useEffect(() => {
+    if (!authLoading && (!firebaseUser || !firebaseUser.emailVerified)) {
+      if (currentView === 'customer-dashboard' || currentView === 'admin-dashboard') {
+        handleNavigate('login');
+      }
+    }
+  }, [authLoading, firebaseUser, currentView]);
 
   // Keep browser URL synchronized (standard + hash routing aware)
   useEffect(() => {
@@ -122,6 +131,7 @@ function MainApp() {
         'landing': '/',
         'success': '/success',
         'failure': '/failure',
+        'verify-email': '/verify-email',
       };
       const newPath = pathMap[view];
       if (newPath && window.location.pathname !== newPath) {
@@ -132,12 +142,20 @@ function MainApp() {
   };
 
   const handleOpenQuickService = (serviceId: string) => {
+    if (!firebaseUser || !firebaseUser.emailVerified) {
+      handleNavigate('login');
+      return;
+    }
     setCustomerTab(serviceId);
     setCurrentView('customer-dashboard');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRaiseDispute = (ref: string) => {
+    if (!firebaseUser || !firebaseUser.emailVerified) {
+      handleNavigate('login');
+      return;
+    }
     setDisputePrefillRef(ref);
     setCustomerTab('support');
     setCurrentView('customer-dashboard');

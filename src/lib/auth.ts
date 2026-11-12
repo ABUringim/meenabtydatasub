@@ -88,7 +88,7 @@ export const signIn = async (email: string, password: string): Promise<FirebaseU
 export const signUp = async (email: string, password: string): Promise<string> => {
   try {
     const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://meenabtydatasub.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sayyadadatasub.shop';
 
     await sendEmailVerification(cred.user, {
       url: `${origin}/login?verified=1`,
@@ -96,6 +96,30 @@ export const signUp = async (email: string, password: string): Promise<string> =
     }).catch((e) => {
       console.warn('Verification dispatch warning:', e);
     });
+
+    // Create user profile in Firestore immediately with role: 'customer' and 0 wallet balance
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('./firebase');
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        uid: cred.user.uid,
+        email: cred.user.email || email.trim(),
+        name: email.trim().split('@')[0].toUpperCase(),
+        phone: '08123456789',
+        tier: 1,
+        kyc_status: 'unverified',
+        role: 'customer',
+        wallet_balance: 0,
+        ledger_balance: 0,
+        hasPin: false,
+        twoFactorEnabled: false,
+        suspended: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    } catch (fsErr) {
+      console.warn('Initial Firestore write warning on signup:', fsErr);
+    }
 
     // Immediately sign the user out (No Auto Login)
     await signOut(auth);
@@ -129,7 +153,7 @@ export const resendVerification = async (email?: string, password?: string): Pro
   }
 
   try {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://meenabtydatasub.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sayyadadatasub.shop';
     await sendEmailVerification(targetUser, {
       url: `${origin}/login?verified=1`,
       handleCodeInApp: false,
