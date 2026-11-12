@@ -64,7 +64,7 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
     setError(null);
 
     try {
-      const res = await loginWithGoogle();
+      const res = await loginWithGoogle(email.trim() || undefined);
       if (res) {
         onSuccess();
       }

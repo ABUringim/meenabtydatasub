@@ -1,12 +1,12 @@
 {
   "projectId": "meenabtydatasub",
-  "appId": "1:1029384756:web:abcdef123456",
-  "apiKey": "AIzaSyDummyKeyForSayyadaDataSub7812",
-  "authDomain": "meenabtydatasub.firebaseapp.com",
+  "appId": "1:631385339885:web:e45ca3da37217e334359e4",
+  "apiKey": "AIzaSyC_BWoDPqNvT5gnc_4cfSfUvlRKC3PQ2_I",
+  "authDomain": "sayyada-datasub.firebaseapp.com",
   "firestoreDatabaseId": "(default)",
   "storageBucket": "meenabtydatasub.appspot.com",
-  "messagingSenderId": "1029384756",
+  "messagingSenderId": "631385339885",
   "measurementId": "",
-  "oAuthClientId": "",
+  "oAuthClientId": "631385339885-2vm1mqfrd9ge1u04bs8vthefjvr84ueb.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

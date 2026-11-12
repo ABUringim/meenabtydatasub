@@ -9,23 +9,29 @@
     "start": "node server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --passWithNoTests"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/canvas-confetti": "^1.9.0",
+    "@types/jest": "^30.0.0",
     "@vitejs/plugin-react": "^6.1.1",
     "axios": "^1.21.0",
     "canvas-confetti": "^1.9.4",
     "dotenv": "^17.2.3",
+    "esbuild-jest": "^0.5.0",
     "express": "^4.21.2",
     "firebase": "^13.2.0",
+    "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "ts-jest": "^29.4.15",
     "vite": "^8.3.0"
   },
   "devDependencies": {

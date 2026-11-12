@@ -9,7 +9,7 @@ import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { bigiSubProvider } from './vtu/providers/bigisub';
-import { BIGISUB_TOKEN_SECRET, BIGISUB_BASE_URL } from './config/secrets';
+import { BIGISUB_TOKEN_SECRET, BIGISUB_BASE_URL, DEPLOYED_URL } from './config/secrets';
 import { PLAN_CODE_MAP } from './vtu/planCodeMap';
 
 admin.initializeApp();
@@ -39,7 +39,7 @@ export const initializePayment = functions.https.onCall(async (data, context) =>
         email,
         amount: amountKobo,
         reference,
-        callback_url: `${process.env.APP_URL || 'https://sayyadadatasub.shop'}/payment-callback`,
+        callback_url: `${DEPLOYED_URL}/payment-callback`,
         metadata: {
           userId: context.auth.uid,
           custom_fields: [{ display_name: 'Platform', variable_name: 'platform', value: 'Sayyada Datasub' }],

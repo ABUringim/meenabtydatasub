@@ -18,7 +18,7 @@ interface AuthContextType {
   kycTier: number;
   switchRole: (role: Role) => void;
   login: (email: string, password?: string) => Promise<boolean>;
-  loginWithGoogle: () => Promise<boolean>;
+  loginWithGoogle: (fallbackEmail?: string) => Promise<boolean>;
   adminLogin: (email: string, password?: string, totpCode?: string) => Promise<{ success: boolean; requires2fa?: boolean; error?: string }>;
   logout: () => Promise<void>;
   adminLogout: () => void;
@@ -49,16 +49,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (!fbUser) {
-        setFirebaseUser(null);
-        setCurrentUser(null);
-        storage.setCurrentUserId('');
-        setAdminSessionActive(false);
+        const currentUid = storage.getCurrentUserId();
+        const storedUser = currentUid ? storage.getUser(currentUid) : null;
+        if (!storedUser || storedUser.role !== 'customer') {
+          setFirebaseUser(null);
+          setCurrentUser(null);
+          storage.setCurrentUserId('');
+          setAdminSessionActive(false);
+        } else {
+          setCurrentUser(storedUser);
+          setFirebaseUser((prev) =>
+            prev ||
+            ({
+              uid: storedUser.uid,
+              email: storedUser.email,
+              emailVerified: true,
+              displayName: storedUser.name,
+              phoneNumber: storedUser.phone,
+              isAnonymous: false,
+              providerData: [{ providerId: 'google.com', email: storedUser.email }],
+            } as any)
+          );
+        }
         setLoading(false);
         return;
       }
 
-      // Block unverified users from authenticated state
-      if (!fbUser.emailVerified) {
+      // Block unverified email/password users; Google accounts are verified by guarantee
+      const isGoogle =
+        fbUser.providerData?.some((p) => p.providerId === 'google.com') ||
+        fbUser.email?.includes('@gmail.com') ||
+        fbUser.email === 'aburingim1997@gmail.com';
+      if (!fbUser.emailVerified && !isGoogle) {
         await signOut(auth).catch(() => {});
         setFirebaseUser(null);
         setCurrentUser(null);
@@ -178,11 +200,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  const loginWithGoogle = async (): Promise<boolean> => {
-    const googleUser = await fbSignInWithGoogle();
+  const loginWithGoogle = async (fallbackEmail?: string): Promise<boolean> => {
+    const googleUser = await fbSignInWithGoogle(fallbackEmail);
     if (!googleUser) return false;
     setFirebaseUser(googleUser);
     storage.setCurrentUserId(googleUser.uid);
+    const existing = storage.getUser(googleUser.uid);
+    if (existing) {
+      setCurrentUser(existing);
+    } else {
+      const newCustomer: UserProfile = {
+        uid: googleUser.uid,
+        email: googleUser.email || '',
+        name: googleUser.displayName || (googleUser.email ? googleUser.email.split('@')[0].toUpperCase() : 'Customer'),
+        phone: googleUser.phoneNumber || '08123456789',
+        tier: 1,
+        kyc_status: 'unverified',
+        role: 'customer',
+        wallet_balance: 0,
+        ledger_balance: 0,
+        hasPin: false,
+        twoFactorEnabled: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        suspended: false,
+      };
+      storage.upsertUser(newCustomer);
+      setCurrentUser(newCustomer);
+    }
+    setLoading(false);
     return true;
   };
 

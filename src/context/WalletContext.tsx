@@ -14,6 +14,7 @@ import { storage } from '../services/storage';
 import { vtuProvider, VendingRequestPayload } from '../services/vtuProvider';
 import { paystack } from '../services/paystack';
 import { useAuth } from './AuthContext';
+import { logger } from '../lib/logger';
 
 export interface VendedRecipientPrompt {
   service: ServiceCategory;
@@ -113,11 +114,18 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           amountKobo,
           'success'
         );
+        logger.walletFunded({
+          amountNgn,
+          userId: user.uid,
+          reference: `FUND_${Date.now()}`,
+          method: 'paystack',
+        });
         showToast(`Successfully credited ₦${amountNgn.toLocaleString()} to your wallet!`);
         refreshUser();
         loadData();
       },
       onCancel: () => {
+        logger.warn('wallet', 'Wallet funding cancelled by customer', { userId: user.uid, amountNgn });
         showToast('Wallet funding cancelled');
       },
     });
@@ -142,6 +150,13 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         particleCount: 50,
         spread: 50,
         origin: { y: 0.7 },
+      });
+      logger.transactionCompleted({
+        service: payload.service,
+        provider: payload.provider,
+        amountNgn: result.amount / 100,
+        reference: result.reference,
+        status: 'success',
       });
       showToast(`${payload.service.toUpperCase()} delivered successfully!`);
       setActiveReceiptTxn(result);

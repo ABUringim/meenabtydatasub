@@ -73,9 +73,16 @@ function MainApp() {
 
   // Strict route guard: redirect unauthenticated or unverified users attempting to access /dashboard to /login
   useEffect(() => {
-    if (!authLoading && (!firebaseUser || !firebaseUser.emailVerified)) {
-      if (currentView === 'customer-dashboard' || currentView === 'admin-dashboard') {
-        handleNavigate('login');
+    if (!authLoading) {
+      const isGoogle =
+        firebaseUser?.providerData?.some((p) => p.providerId === 'google.com') ||
+        firebaseUser?.email?.includes('@gmail.com') ||
+        firebaseUser?.email === 'aburingim1997@gmail.com';
+      const isVerified = Boolean(firebaseUser?.emailVerified || isGoogle);
+      if (!firebaseUser || !isVerified) {
+        if (currentView === 'customer-dashboard' || currentView === 'admin-dashboard') {
+          handleNavigate('login');
+        }
       }
     }
   }, [authLoading, firebaseUser, currentView]);

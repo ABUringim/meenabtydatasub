@@ -180,18 +180,34 @@ export class BigiSubProvider implements IVtuProvider {
     return res.data;
   }
 
-  async requery(reference: string, operatorRef?: string): Promise<any> {
+  async buyCable(params: VendingParams): Promise<NormalizedVtuResult> {
+    return this.buyCableTv(params);
+  }
+
+  async healthCheck(): Promise<any> {
+    return {
+      status: 'healthy',
+      provider: this.name,
+      code: this.code,
+      endpoint: BIGISUB_BASE_URL,
+    };
+  }
+
+  async requery(reference: any, operatorRef?: any): Promise<any> {
+    const ref = typeof reference === 'object'
+      ? (reference?.tranId || reference?.tran_id || reference?.reference || reference?.requestId)
+      : reference;
     try {
       const res = await axios.post(
         `${BIGISUB_BASE_URL}/requery/`,
         {
-          tran_id: operatorRef || reference,
+          tran_id: operatorRef || ref,
         },
         { headers: this.getHeaders(), timeout: 15000 }
       );
       return res.data;
     } catch (err: any) {
-      return { status: 'reconciled_fallback', reference };
+      return { status: 'reconciled_fallback', reference: ref };
     }
   }
 }

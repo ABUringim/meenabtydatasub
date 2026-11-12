@@ -281,7 +281,7 @@ class StorageService {
     const storedUsers = this.getItem<UserProfile[]>(STORAGE_KEYS.USERS, []);
     if (storedUsers.some((u) => u.wallet_balance === 4500000 || u.uid === 'usr_customer_meenabty_01')) {
       const sanitized = storedUsers
-        .filter((u) => u.uid !== 'usr_customer_meenabty_01' && u.email !== 'aburingim1997@gmail.com')
+        .filter((u) => u.uid !== 'usr_customer_meenabty_01')
         .map((u) => (u.role === 'customer' ? { ...u, wallet_balance: 0, ledger_balance: 0 } : u));
       this.setItem(STORAGE_KEYS.USERS, sanitized.length ? sanitized : [DEFAULT_OWNER, DEFAULT_ADMIN]);
       this.setItem(STORAGE_KEYS.TRANSACTIONS, []);
@@ -345,8 +345,25 @@ class StorageService {
   }
 
   getUser(uid: string): UserProfile | null {
+    if (!uid) return null;
     const users = this.getUsers();
-    return users.find((u) => u.uid === uid) || null;
+    return users.find((u) => u.uid === uid || (u.email && u.email.toLowerCase() === uid.toLowerCase())) || null;
+  }
+
+  upsertUser(profile: UserProfile): UserProfile {
+    const users = this.getUsers();
+    const idx = users.findIndex(
+      (u) => u.uid === profile.uid || (u.email && profile.email && u.email.toLowerCase() === profile.email.toLowerCase())
+    );
+    if (idx >= 0) {
+      users[idx] = { ...users[idx], ...profile, updated_at: new Date().toISOString() };
+    } else {
+      users.push(profile);
+    }
+    this.setItem(STORAGE_KEYS.USERS, users);
+    this.recomputeAdminStats();
+    this.notifyAdmin();
+    return profile;
   }
 
   updateUser(uid: string, updates: Partial<UserProfile>): UserProfile {
